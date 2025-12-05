@@ -400,8 +400,15 @@ const startRightPaneObserver = () => {
 };
 
 // 전체 document를 감시하여 right_pane이 생성되면 감시 시작
+let rightPaneInitialized = false;
 const documentObserver = new MutationObserver(() => {
-  startRightPaneObserver();
+  if (!rightPaneInitialized) {
+    const rightPane = document.querySelector('.autocomplete_pane.right_pane');
+    if (rightPane) {
+      rightPaneInitialized = true;
+      startRightPaneObserver();
+    }
+  }
 });
 
 documentObserver.observe(document.body, { childList: true, subtree: true });
