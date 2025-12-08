@@ -421,48 +421,46 @@ html #autocomplete_popup .autocomplete_item {
   let styleObserverInitialized = false;
 
   const applyRightPaneStyles = () => {
-    const rightPane = document.querySelector('.autocomplete_pane.right_pane');
-    if (!rightPane) return;
+  const rightPane = document.querySelector('.autocomplete_pane. right_pane');
+  if (! rightPane) return;
 
-    // INPUT 요소들
-    rightPane.querySelectorAll('input').forEach(input => {
-      input.style.backgroundColor = 'rgb(21, 22, 25)';
-      input.style.color = 'rgb(255, 255, 255)';
-      input.style.border = '1.6px solid rgb(115, 119, 127)';
-      input.style.borderRadius = '8px';
-      input.style.padding = '12px 16px';
-      input.style.fontSize = '14px';
-      input.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-      input.style.width = '100%';
-      input.style.boxSizing = 'border-box';
-    });
+  // INPUT 요소들
+  rightPane.querySelectorAll('input'). forEach(input => {
+    input.style.backgroundColor = 'rgb(21, 22, 25)';
+    input.style. color = 'rgb(255, 255, 255)';
+    input.style.border = '1. 6px solid rgb(115, 119, 127)';
+    input.style.borderRadius = '8px';
+    input.style. padding = '12px 16px';
+    input.style. fontSize = '14px';
+    input.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
+    input. style.width = '100%';
+    input.style.boxSizing = 'border-box';
+  });
 
-    // DIV 라벨 요소들
-    rightPane.querySelectorAll('div').forEach(div => {
-      if (div.tagName !== 'INPUT' && div.tagName !== 'BUTTON') {
-        if (div.children.length === 0 || div.textContent.trim().length > 0) {
-          div.style.color = 'rgb(255, 255, 255)';
-          div.style.fontSize = '14px';
-          div.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-          div.style.fontWeight = '400';
-          div.style.lineHeight = '16.8px';
-        }
-      }
-    });
+  // DIV 라벨 요소들 (모든 DIV에 스타일 적용 - TEXT 노드의 부모)
+  rightPane.querySelectorAll('div').forEach(div => {
+    if (div.tagName !== 'INPUT' && div.tagName !== 'BUTTON') {
+      // 모든 DIV에 스타일 적용 (TEXT 노드를 포함하고 있는 부모)
+      div.style.color = 'rgb(255, 255, 255)';
+      div.style.fontSize = '14px';
+      div.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
+      div.style.fontWeight = '400';
+      div.style.lineHeight = '16. 8px';
+    }
+  });
 
-    // BUTTON 요소들
-    rightPane.querySelectorAll('button').forEach(button => {
-      button.style.backgroundColor = 'rgba(0, 0, 0, 0)';
-      button.style.color = 'rgb(255, 255, 255)';
-      button.style.border = '0.8px solid rgba(115, 119, 127, 0.5)';
-      button.style.borderRadius = '6px';
-      button.style.padding = '12px 24px';
-      button.style.fontSize = '14px';
-      button.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-      button.style.cursor = 'pointer';
-    });
-  };
-
+  // BUTTON 요소들
+  rightPane.querySelectorAll('button').forEach(button => {
+    button.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+    button.style.color = 'rgb(255, 255, 255)';
+    button.style. border = '0.8px solid rgba(115, 119, 127, 0.5)';
+    button. style.borderRadius = '6px';
+    button.style.padding = '12px 24px';
+    button.style.fontSize = '14px';
+    button. style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
+    button.style. cursor = 'pointer';
+  });
+};
   // DOM 변경 감시
   const styleObserver = new MutationObserver(() => {
     applyRightPaneStyles();
