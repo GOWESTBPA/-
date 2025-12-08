@@ -263,7 +263,12 @@ html #autocomplete_popup . autocomplete_item {
   transition-duration: 0.2s;
 }
   `);
-
+.autocomplete_pane.right_pane input {
+  background-color: rgb(21, 22, 25) !important;
+  color: rgb(255, 255, 255) !important;
+  border: 1.6px solid rgb(115, 119, 127) !important;
+  /* hover/focus states with color transitions */
+}
  // ===== SOOP font-family 강제 적용 =====
 const applyFontFix = () => {
   const items = document.querySelectorAll('#autocomplete_popup .autocomplete_item');
@@ -388,7 +393,16 @@ U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subs
 	height: 100%;
 	flex-direction: column;
 }
-
+const applyRightPaneStyles = () => {
+  const rightPane = document.querySelector('.autocomplete_pane.right_pane');
+  if (!rightPane) return;
+  
+  // Apply inline styles to inputs, divs, buttons
+  rightPane.querySelectorAll('input').forEach(input => {
+    input.style.backgroundColor = 'rgb(21, 22, 25)';
+    // ...
+  });
+};
 .autocomplete_input {
 	display: flex;
 	position: relative;
@@ -459,3 +473,4 @@ U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subs
 
 \uC790\uB3D9\uC644\uC131 \uBAA9\uB85D\uC5D0\uC11C\uB294 \uCCAB\uBC88\uC9F8 \uD14D\uC2A4\uD2B8\uB9CC \uB098\uD0C0\uB098\uBA70, \uD574\uB2F9 \uD14D\uC2A4\uD2B8\uB97C \uC120\uD0DD \uC2DC \uB79C\uB364\uC73C\uB85C \uC644\uC131\uB429\uB2C8\uB2E4.
 \uD14D\uC2A4\uD2B8\uAC00 \uC120\uD0DD\uB41C \uD6C4, \uC124\uC815\uD55C \uC0AD\uC81C \uD655\uB960\uC5D0 \uB530\uB77C \uD2B9\uC815 \uAE00\uC790\uB4E4\uC774 \uB79C\uB364\uD558\uAC8C \uC77C\uBD80 \uC0AD\uC81C\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`),k=l("\uC800\uC7A5",()=>{let g=e.get();if(g===null)return;let x=C.get(),m=[...x.slice(0,g),{title:S.value,text:w.value},...x.slice(g+1)];localStorage.setItem("ac.templates",JSON.stringify(m)),C.set(m)}),a=l("\uC0AD\uC81C",()=>{let g=e.get();if(g===null)return;if(w.value){alert("\uD15C\uD50C\uB9BF\uC744 \uC0AD\uC81C\uD558\uB824\uBA74 \uD14D\uC2A4\uD2B8\uB97C \uC804\uBD80 \uC9C0\uC6CC \uC8FC\uC138\uC694.");return}let x=C.get(),m=[...x.slice(0,g),...x.slice(g+1)];localStorage.setItem("ac.templates",JSON.stringify(m)),C.set(m)});p.append(S,w,k,a),d.then(()=>{S.remove(),w.remove(),k.remove(),a.remove()})}),j.subscribe((c,{signal:d})=>{c&&(C.set(JSON.parse(localStorage.getItem("ac.templates")??"[]")),u.classList.add("opened"),d.then(()=>{u.classList.remove("opened")}),window.addEventListener("keydown",h=>{h.key==="Escape"&&j.set(!1)},{signal:d}))})}})();
+
