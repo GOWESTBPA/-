@@ -2,14 +2,34 @@
 // @name         Chzzk Auto-Complete
 // @namespace    http://tampermonkey.net/
 // @version      2025.12.02
-// @description  치지직에서 가사를 자동완성 해줍니다.   일치하는 부분이 있는 가사 찾기(초성도 가능), 입력이 빈 칸일 때 다음 가사 미리 띄우기 등의 기능이 있습니다.
+// @description  치지직에서 가사를 자동완성 해줍니다.  일치하는 부분이 있는 가사 찾기(초성도 가능), 입력이 빈 칸일 때 다음 가사 미리 띄우기 등의 기능이 있습니다.
 // @author       Nata
 // @license      MIT
 // @match        https://chzzk.naver.com/*
-// @match        https://play.sooplive.co.kr/*
+// @match        https://play.sooplive.co. kr/*
 // @match        https://vod.sooplive.co.kr/*
+// @match        https://www.youtube.com/live_chat*
 // @grant        GM_addStyle
 // ==/UserScript==
+
+// GM_addStyle 폴백
+if (typeof GM_addStyle === 'undefined') {
+  window.GM_addStyle = function(css) {
+    var style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+  };
+}
+// Trusted Types 우회 (YouTube용)
+if (window.trustedTypes && trustedTypes.createPolicy) {
+  if (! trustedTypes.defaultPolicy) {
+    trustedTypes.createPolicy('default', {
+      createHTML: (string) => string,
+      createScript: (string) => string,
+      createScriptURL: (string) => string,
+    });
+  }
+}
 
 (function() {
   'use strict';
@@ -879,11 +899,19 @@ var b=(e,{scope:n,equals:s=pe,lazy:o=!0}={})=>{let l={scope:n,equals:s,init:e};l
 .autocomplete_subtext {
 	color: rgba(255, 255, 255, 0.5);
 }
-`);const WRAP = location.hostname.includes('chzzk')
+`);const isChzzk = location.hostname. includes('chzzk');
+const isYoutube = location.hostname.includes('youtube');
+
+const WRAP = isChzzk
   ? "div[class*=live_chatting_input_container]"
-  : "#chat_write";
-const INPUT = location.hostname.includes('chzzk')
-  ? "pre[contenteditable]"
+  : isYoutube
+  ? "#input-container.yt-live-chat-message-input-renderer"
+  :  "#chat_write";
+
+const INPUT = isChzzk
+  ?  "pre[contenteditable]"
+  : isYoutube
+  ? "div#input.yt-live-chat-text-input-field-renderer[contenteditable]"
   : "#write_area[contenteditable='true']";
 
 U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subscribe(v=>{n.style.left=`${v}px`}),yc.subscribe(v=>{n.style.bottom=`${48-v}px`}),op.subscribe(v=>{n.style.opacity=`${v}`}),e.appendChild(n);let s=b(n),o=b(null),l=b(""),t=b(0),i=b(0),u=b(null),r=b(null);U(INPUT,(p,f)=>{let v=p,B=()=>{l.set(v.textContent??"")};o.set(v),v.addEventListener("input",B);let{handleControlKey:T}=Ne({$popupElm:s,$inputElm:o,$text:l,$selection:t,$lastCompletionTime:i,$lastCompletion:u,$lastCompletionCategory:r},f);v.addEventListener("keydown",T),f(re(B))},e)});GM_addStyle(`
@@ -1007,7 +1035,7 @@ U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subs
 	transition-timing-function: cubic-bezier(.2,1,.5,.95);
 	transition-duration: .2s;
 }
-`);{let e=b(-1),n=b(c=>-Math.min(c(e),0)),s=b(c=>{let d=c(e);return d===null?null:c(C)[d]??null}),o=c=>{let d=document.createElement("div");return d.textContent=c,d},l=(c,d,h=[])=>{let y=document.createElement("button");return y.className="autocomplete_button transition",y.classList.add(...h),y.textContent=c,y.addEventListener("click",d),y},t=(c,d="text")=>{let h=document.createElement("input");return h.className="autocomplete_input transition",h.type=d,h.value=c,h},i=(c,d="")=>{let h=document.createElement("textarea");return h.className="autocomplete_textarea transition",h.placeholder=d,h.value=c,h},u=document.createElement("div");u.id="autocomplete_settings",document.body.appendChild(u);let r=document.createElement("div"),p=document.createElement("div");r.className="autocomplete_pane left_pane",p.className="autocomplete_pane right_pane",u.append(r,p);let f=l("\u2699\uFE0F \uC124\uC815",()=>{e.set(e.get()!==-1?-1:-2)}),v=l("\u{1F4DD} \uD15C\uD50C\uB9BF \uCD94\uAC00\uD558\uAE30",()=>{let c={title:"\uC0C8 \uD15C\uD50C\uB9BF",text:""};C.set([c,...C.get()]),e.set(0)});r.append(f,v);let B=(c,d,h,y)=>{let S=Number(c);return Number.isNaN(S)||S<d||S>h?y:Math.floor(S)};n.subscribe((c,{signal:d})=>{if(c===0)return;if(c===2){let m=i(JSON.stringify(C.get(),null,4)),E=l("\uC800\uC7A5",()=>{let I=JSON.parse(m.value);localStorage.setItem("ac.templates",JSON.stringify(I)),C.set(I)});f.textContent="\u2699\uFE0F \uC124\uC815 - \uC77C\uBC18 \uC124\uC815\uC73C\uB85C \uC804\uD658\uD558\uAE30";let V=[m,E];p.append(...V),d.then(()=>{f.textContent="\u2699\uFE0F \uC124\uC815";for(let I of V)I.remove()});return}b(m=>JSON.stringify({cooltime:m(P),nextLyricsCount:m(M),wsRemovalProb:m(O),conRemovalProb:m($),xCoord:m(xc),yCoord:m(yc),opacity:m(op)})).subscribe(m=>{localStorage.setItem("ac.settings",m)});let y=()=>{let m=B(S.value,2,60,P.get()/1e3)*1e3,E=B(w.value,0,10,M.get()),V=B(k.value,0,100,O.get()*100)/100,I=B(a.value,0,100,$.get()*100)/100,Xc=B(xC.value,-9999,9999,xc.get()),Yc=B(yC.value,-9999,9999,yc.get()),Op=B(oP.value,0,100,op.get()*100)/100;P.set(m),M.set(E),O.set(V),$.set(I),xc.set(Xc),yc.set(Yc),op.set(Op)},S=t((P.get()/1e3).toString(),"number"),w=t(M.get().toString(),"number"),k=t((O.get()*100).toString(),"number"),a=t(($.get()*100).toString(),"number"),xC=t(xc.get().toString(),"number"),yC=t(yc.get().toString(),"number"),oP=t((op.get()*100).toString(),"number"),g=l("\uC800\uC7A5",y);S.min="2",S.max="60",w.min="0",w.max="10",k.min="0",k.max="100",a.min="0",a.max="100",oP.min="0",oP.max="100";let x=[o("\uBBF8\uB9AC \uB744\uC6B8 \uB2E4\uC74C \uD14D\uC2A4\uD2B8\uC758 \uAC1C\uC218:"),w,o("\uB744\uC5B4\uC4F0\uAE30 \uC0AD\uC81C \uD655\uB960 (% \uB2E8\uC704):"),k,o("\uC5F0\uC18D\uD55C \uC790\uC74C/\uBAA8\uC74C \uBC0F \uD2B9\uC218\uBB38\uC790 \uC0AD\uC81C \uD655\uB960 (% \uB2E8\uC704):"),a,o("\uCFE8\uD0C0\uC784 (\uCD08 \uB2E8\uC704, \uCD5C\uC18C 2\uCD08):"),S,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 X\uC88C\uD45C (px \uB2E8\uC704, \uC74C\uC218\uB294 \uC67C\uCABD, \uC591\uC218\uB294 \uC624\uB978\uCABD, -400~0 \uC0AC\uC774\uC758 \uAC12\uC744 \uAD8C\uC7A5):",xC,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 Y\uC88C\uD45C (px \uB2E8\uC704, \uC74C\uC218\uB294 \uC67C\uCABD, \uC591\uC218\uB294 \uC624\uB978\uCABD, -400~0 \uC0AC\uC774\uC758 \uAC12\uC744 \uAD8C\uC7A5):",yC,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 \uD22C\uBA85\uB3C4 (% \uB2E8\uC704, 0~100):",oP,g];p.append(...x),f.textContent="\u2699\uFE0F \uC124\uC815 - \uD15C\uD50C\uB9BF JSON \uD3B8\uC9D1 \uBAA8\uB4DC\uB85C \uC804\uD658\uD558\uAE30",d.then(()=>{for(let m of x)m.remove();f.textContent="\u2699\uFE0F \uC124\uC815"})});let T=({target:c})=>{let d=_.get().indexOf(c);e.set(d)},_=b(c=>c(C).map(({title:d})=>l(d,T,["left"]))),L=b(c=>{let d=c(e);if(d!==null)return c(_)[d]});_.subscribe((c,{signal:d})=>{r.append(...c),d.then(()=>{for(let h of c)h.remove()})}),L.subscribe((c,{signal:d})=>{c!==void 0&&(c.classList.add("selected"),d.then(()=>{c.classList.remove("selected")}))}),s.subscribe((c,{signal:d})=>{if(c===null)return;let{title:h,text:y}=c,S=t(h),w=i(y,`\uD14D\uC2A4\uD2B8\uB294 \uC904 \uB2E8\uC704\uB85C \uAD6C\uBD84\uB418\uBA70, \uBE48 \uC904\uACFC \uAC01 \uD14D\uC2A4\uD2B8\uC758 \uC591\uC606 \uACF5\uBC31\uC740 \uBAA8\uB450 \uBB34\uC2DC\uB429\uB2C8\uB2E4.
+`);{let e=b(-1),n=b(c=>-Math.min(c(e),0)),s=b(c=>{let d=c(e);return d===null?null:c(C)[d]??null}),o=c=>{let d=document.createElement("div");return d.textContent=c,d},l=(c,d,h=[])=>{let y=document.createElement("button");return y.className="autocomplete_button transition",y.classList.add(...h),y.textContent=c,y.addEventListener("click",d),y},t=(c,d="text")=>{let h=document.createElement("input");return h.className="autocomplete_input transition",h.type=d,h.value=c,h},i=(c,d="")=>{let h=document.createElement("textarea");return h.className="autocomplete_textarea transition",h.placeholder=d,h.value=c,h},u=document.createElement("div");u.id="autocomplete_settings",document.body.appendChild(u);let r=document.createElement("div"),p=document.createElement("div");r.className="autocomplete_pane left_pane",p.className="autocomplete_pane right_pane",u.append(r,p);let f=l("\u2699\uFE0F \uC124\uC815",()=>{e.set(e.get()!==-1?-1:-2)}),v=l("\u{1F4DD} \uD15C\uD50C\uB9BF \uCD94\uAC00\uD558\uAE30",()=>{let c={title:"\uC0C8 \uD15C\uD50C\uB9BF",text:""};C.set([c,...C.get()]),e.set(0)});r.append(f,v);let B=(c,d,h,y)=>{let S=Number(c);return Number.isNaN(S)||S<d||S>h?y:Math.floor(S)};n.subscribe((c,{signal:d})=>{p.innerHTML='';if(c===0)return;if(c===2){let m=i(JSON.stringify(C.get(),null,4)),E=l("\uC800\uC7A5",()=>{let I=JSON.parse(m.value);localStorage.setItem("ac.templates",JSON.stringify(I)),C.set(I)});f.textContent="\u2699\uFE0F \uC124\uC815 - \uC77C\uBC18 \uC124\uC815\uC73C\uB85C \uC804\uD658\uD558\uAE30";let V=[m,E];p.append(...V),d.then(()=>{f.textContent="\u2699\uFE0F \uC124\uC815";for(let I of V)I.remove()});return}b(m=>JSON.stringify({cooltime:m(P),nextLyricsCount:m(M),wsRemovalProb:m(O),conRemovalProb:m($),xCoord:m(xc),yCoord:m(yc),opacity:m(op)})).subscribe(m=>{localStorage.setItem("ac.settings",m)});let y=()=>{let m=B(S.value,2,60,P.get()/1e3)*1e3,E=B(w.value,0,10,M.get()),V=B(k.value,0,100,O.get()*100)/100,I=B(a.value,0,100,$.get()*100)/100,Xc=B(xC.value,-9999,9999,xc.get()),Yc=B(yC.value,-9999,9999,yc.get()),Op=B(oP.value,0,100,op.get()*100)/100;P.set(m),M.set(E),O.set(V),$.set(I),xc.set(Xc),yc.set(Yc),op.set(Op)},S=t((P.get()/1e3).toString(),"number"),w=t(M.get().toString(),"number"),k=t((O.get()*100).toString(),"number"),a=t(($.get()*100).toString(),"number"),xC=t(xc.get().toString(),"number"),yC=t(yc.get().toString(),"number"),oP=t((op.get()*100).toString(),"number"),g=l("\uC800\uC7A5",y);S.min="2",S.max="60",w.min="0",w.max="10",k.min="0",k.max="100",a.min="0",a.max="100",oP.min="0",oP.max="100";let x=[o("\uBBF8\uB9AC \uB744\uC6B8 \uB2E4\uC74C \uD14D\uC2A4\uD2B8\uC758 \uAC1C\uC218:"),w,o("\uB744\uC5B4\uC4F0\uAE30 \uC0AD\uC81C \uD655\uB960 (% \uB2E8\uC704):"),k,o("\uC5F0\uC18D\uD55C \uC790\uC74C/\uBAA8\uC74C \uBC0F \uD2B9\uC218\uBB38\uC790 \uC0AD\uC81C \uD655\uB960 (% \uB2E8\uC704):"),a,o("\uCFE8\uD0C0\uC784 (\uCD08 \uB2E8\uC704, \uCD5C\uC18C 2\uCD08):"),S,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 X\uC88C\uD45C (px \uB2E8\uC704, \uC74C\uC218\uB294 \uC67C\uCABD, \uC591\uC218\uB294 \uC624\uB978\uCABD, -400~0 \uC0AC\uC774\uC758 \uAC12\uC744 \uAD8C\uC7A5):",xC,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 Y\uC88C\uD45C (px \uB2E8\uC704, \uC74C\uC218\uB294 \uC67C\uCABD, \uC591\uC218\uB294 \uC624\uB978\uCABD, -400~0 \uC0AC\uC774\uC758 \uAC12\uC744 \uAD8C\uC7A5):",yC,"\uC790\uB3D9\uC644\uC131 \uD31D\uC5C5 \uD22C\uBA85\uB3C4 (% \uB2E8\uC704, 0~100):",oP,g];p.append(...x),f.textContent="\u2699\uFE0F \uC124\uC815 - \uD15C\uD50C\uB9BF JSON \uD3B8\uC9D1 \uBAA8\uB4DC\uB85C \uC804\uD658\uD558\uAE30",d.then(()=>{for(let m of x)m.remove();f.textContent="\u2699\uFE0F \uC124\uC815"})});let T=({target:c})=>{let d=_.get().indexOf(c);e.set(d)},_=b(c=>c(C).map(({title:d})=>l(d,T,["left"]))),L=b(c=>{let d=c(e);if(d!==null)return c(_)[d]});_.subscribe((c,{signal:d})=>{r.append(...c),d.then(()=>{for(let h of c)h.remove()})}),L.subscribe((c,{signal:d})=>{c!==void 0&&(c.classList.add("selected"),d.then(()=>{c.classList.remove("selected")}))}),s.subscribe((c,{signal:d})=>{if(c===null)return;let{title:h,text:y}=c,S=t(h),w=i(y,`\uD14D\uC2A4\uD2B8\uB294 \uC904 \uB2E8\uC704\uB85C \uAD6C\uBD84\uB418\uBA70, \uBE48 \uC904\uACFC \uAC01 \uD14D\uC2A4\uD2B8\uC758 \uC591\uC606 \uACF5\uBC31\uC740 \uBAA8\uB450 \uBB34\uC2DC\uB429\uB2C8\uB2E4.
 \uC790\uB3D9\uC644\uC131 \uC2DC \uD14D\uC2A4\uD2B8\uAC00 \uC5EC\uB7EC \uAC1C \uC911 \uB79C\uB364\uC73C\uB85C \uC120\uD0DD\uB418\uAC8C \uD558\uB824\uBA74, \uD55C \uC904 \uC548\uC5D0\uC11C \uAD6C\uBD84\uD560 \uD14D\uC2A4\uD2B8 \uC0AC\uC774\uC5D0 '|'\uB97C \uB123\uC5B4\uC8FC\uC138\uC694.
 * \uC608\uC2DC: \uC5B5\uC6B8\uD558\uB2E4 \uC5B5\uC6B8\uD574 | \uC5B4\uAD6C\uB77C\uB2E4 \uC5B4\uAD6C\uB798 | \u3147\u3131\u3139\u3137 \u3147\u3131\u3139
 
