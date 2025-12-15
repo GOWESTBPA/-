@@ -2,34 +2,15 @@
 // @name         Chzzk Auto-Complete
 // @namespace    http://tampermonkey.net/
 // @version      2025.12.02
-// @description  치지직에서 가사를 자동완성 해줍니다.  일치하는 부분이 있는 가사 찾기(초성도 가능), 입력이 빈 칸일 때 다음 가사 미리 띄우기 등의 기능이 있습니다.
+// @description  치지직에서 가사를 자동완성 해줍니다.   일치하는 부분이 있는 가사 찾기(초성도 가능), 입력이 빈 칸일 때 다음 가사 미리 띄우기 등의 기능이 있습니다.
 // @author       Nata
 // @license      MIT
 // @match        https://chzzk.naver.com/*
-// @match        https://play.sooplive.co. kr/*
+// @match        https://play.sooplive.co.kr/*
 // @match        https://vod.sooplive.co.kr/*
-// @match        https://www.youtube.com/live_chat*
+// @match        https://www.youtube.com/*
 // @grant        GM_addStyle
 // ==/UserScript==
-
-// GM_addStyle 폴백
-if (typeof GM_addStyle === 'undefined') {
-  window.GM_addStyle = function(css) {
-    var style = document.createElement('style');
-    style.textContent = css;
-    document.head.appendChild(style);
-  };
-}
-// Trusted Types 우회 (YouTube용)
-if (window.trustedTypes && trustedTypes.createPolicy) {
-  if (! trustedTypes.defaultPolicy) {
-    trustedTypes.createPolicy('default', {
-      createHTML: (string) => string,
-      createScript: (string) => string,
-      createScriptURL: (string) => string,
-    });
-  }
-}
 
 (function() {
   'use strict';
@@ -911,7 +892,7 @@ const WRAP = isChzzk
 const INPUT = isChzzk
   ?  "pre[contenteditable]"
   : isYoutube
-  ? "div#input.yt-live-chat-text-input-field-renderer[contenteditable]"
+  ? "div#input. yt-live-chat-text-input-field-renderer[contenteditable]"
   : "#write_area[contenteditable='true']";
 
 U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subscribe(v=>{n.style.left=`${v}px`}),yc.subscribe(v=>{n.style.bottom=`${48-v}px`}),op.subscribe(v=>{n.style.opacity=`${v}`}),e.appendChild(n);let s=b(n),o=b(null),l=b(""),t=b(0),i=b(0),u=b(null),r=b(null);U(INPUT,(p,f)=>{let v=p,B=()=>{l.set(v.textContent??"")};o.set(v),v.addEventListener("input",B);let{handleControlKey:T}=Ne({$popupElm:s,$inputElm:o,$text:l,$selection:t,$lastCompletionTime:i,$lastCompletion:u,$lastCompletionCategory:r},f);v.addEventListener("keydown",T),f(re(B))},e)});GM_addStyle(`
