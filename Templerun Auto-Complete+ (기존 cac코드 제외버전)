@@ -1,1008 +1,422 @@
 // ==UserScript==
-// @name         Templerun Auto-Complete+
+// @name         Templerun Auto-Complete+ (기존 cac코드 제외버전)
 // @namespace    http://tampermonkey.net/
-// @version      2025.12.02
-// @description  치지직, 숲, 유튜브 라이브에서 가사를 자동완성 해줍니다.  일치하는 부분이 있는 가사 찾기(초성도 가능), 입력이 빈 칸일 때 다음 가사 미리 띄우기 등의 기능이 있습니다.
-// @author       통나무대리요족
-// @original     Nata
-// @license      MIT
-// @match        https://chzzk.naver.com/*
-// @match        https://play.sooplive.co.kr/*
-// @match        https://vod.sooplive.co.kr/*
-// @match        https://www.youtube.com/*
-// @match        *://www.youtube.com/live_chat*
-// @run-at       document-idle
-// @grant        unsafeWindow
+// @version      2.9.1
+// @description  Auto-completes Templerun questions with enhanced features
+// @author       You
+// @match        *://*/*
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        GM_addStyle
+// @grant        GM_registerMenuCommand
+// @run-at       document-start
 // ==/UserScript==
 
 (function() {
-  'use strict';
-let isUpdating = false;
-const isYoutubePopup = location.hostname.includes('youtube');
+    'use strict';
 
-function getPopupIframe() {
-  if (! isYoutubePopup) return null;
-
-  const iframes = window.top.document.querySelectorAll('iframe');
-  for (const iframe of iframes) {
-    try {
-      const popup = iframe.contentDocument.getElementById('autocomplete_popup');
-      if (popup) return iframe;
-    } catch(e) {}
-  }
-  return null;
-}
-
-function updatePopupVisibility() {
-  if (isUpdating) return;
-  isUpdating = true;
-
-  const isEnabled = localStorage.getItem('ac. popup_enabled') !== 'false';
-
-  let popups;
-  if (isYoutubePopup) {
-    const iframe = getPopupIframe();
-    if (iframe) {
-      popups = iframe.contentDocument.querySelectorAll('#autocomplete_popup');
-    }
-  } else {
-    popups = document.querySelectorAll('#autocomplete_popup');
-  }
-
-  if (popups) {
-    popups.forEach(popup => {
-      const items = popup.querySelectorAll('.autocomplete_item');
-      items.forEach(item => {
-        if (item.textContent.trim() !== '설정') {
-          item.style. setProperty('display', isEnabled ?  '' : 'none', 'important');
-        }
-      });
-    });
-  }
-
-  isUpdating = false;
-}
-
-const popupObserver = new MutationObserver(() => {
-  updatePopupVisibility();
-});
-
-const watchPopup = () => {
-  if (isYoutubePopup) {
-    const iframe = getPopupIframe();
-    if (iframe) {
-      popupObserver.observe(iframe.contentDocument.body, { childList: true, subtree:  true });
-      return;
-    }
-  } else {
-    const popup = document.getElementById('autocomplete_popup');
-    if (popup) {
-      popupObserver.observe(popup, { childList: true });
-      return;
-    }
-  }
-  setTimeout(watchPopup, 500);
-};
-watchPopup();
-var isYoutubeForStyle = location.hostname.includes('youtube.com');
-
-if(isYoutubeForStyle){
-  var ytStyleObserver = new MutationObserver(function(){
-    var doc = window.top.document;
-    var settingsUI = doc. getElementById('autocomplete_settings');
-
-    if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
-      var styleEl = document.createElement('style');
-      styleEl.id = 'cac-yt-settings-style';
-      styleEl.textContent = '#autocomplete_settings, #autocomplete_settings * { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif ! important; font-size: 14px !important; color: rgb(255, 255, 255) !important; }';
-      doc.head.appendChild(styleEl);
-    }
-  });
-  ytStyleObserver.observe(window.top.document.body, { childList: true, subtree:  true });
-}
-
-    // ===== 1. 백업/복원 유틸 =====
-  function exportBackup() {
-    const templates = JSON.parse(localStorage.getItem('ac.templates') || '[]');
-    const settings = JSON.parse(localStorage.getItem('ac.settings') || '{}');
-
-    const backup = {
-      version: '2024.12.22',
-      exportDate: new Date().toISOString(),
-      templates: templates,
-      settings: settings
+    // Configuration
+    const CONFIG = {
+        DEBUG: false,
+        AUTO_SUBMIT: true,
+        DELAY_MIN: 100,
+        DELAY_MAX: 300,
+        HIGHLIGHT_COLOR: '#90EE90'
     };
 
-    const dataStr = JSON.stringify(backup, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    // Utility functions
+    const log = (...args) => CONFIG.DEBUG && console.log('[Templerun AC+]', ...args);
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    const randomDelay = () => delay(Math.random() * (CONFIG.DELAY_MAX - CONFIG.DELAY_MIN) + CONFIG.DELAY_MIN);
 
-    const now = new Date();
-    const filename = `cac-backup-${
-      now.getFullYear()
-    }${String(now.getMonth() + 1).padStart(2, '0')}${
-      String(now.getDate()).padStart(2, '0')
-    }-${
-      String(now.getHours()).padStart(2, '0')
-    }${String(now.getMinutes()).padStart(2, '0')}${
-      String(now.getSeconds()).padStart(2, '0')
-    }.json`;
+    // Answer database
+    let answerDB = GM_getValue('answerDB', {});
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    console.log(`[CAC] Backup exported: ${filename}`);
-    alert(`✅ 백업 파일이 다운로드되었습니다: ${filename}`);
-  }
-
-  function importBackup(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        try {
-          const backup = JSON.parse(e.target.result);
-
-          if (! backup.templates || !backup.settings) {
-            throw new Error('Invalid backup file format');
-          }
-
-          // 새 데이터 저장
-          localStorage.setItem('ac.templates', JSON.stringify(backup.templates));
-          localStorage. setItem('ac.settings', JSON.stringify(backup.settings));
-
-          console.log('[CAC] Backup restored successfully');
-          alert(`✅ 백업이 복원되었습니다!\n템플릿: ${backup.templates. length}개\n설정이 업데이트되었습니다. `);
-
-          resolve({ success: true, backup });
-        } catch (error) {
-          console.error('[CAC] Import error:', error);
-          alert(`❌ 백업 파일을 읽을 수 없습니다:\n${error.message}`);
-          reject(error);
-        }
-      };
-
-      reader.onerror = (e) => {
-        console. error('[CAC] File read error:', e);
-        reject(e);
-      };
-
-      reader. readAsText(file);
-    });
-  }
-
-  // ===== 2. 설정 팝업에 백업/복원 버튼 추가 =====
-  function addBackupButtonsToSettings() {
-    const isYT = location.hostname.includes('youtube.com');
-    const doc = isYT ? window.top.document : document;
-    const checkAndAddButtons = setInterval(() => {
-      const settingsModal = doc.getElementById('autocomplete_settings');
-      if (!settingsModal) return;
-
-      // 이미 백업 버튼이 있으면 스킵
-      if (window.top.document.getElementById('backup-export-btn')) {
-        clearInterval(checkAndAddButtons);
-        return;
-      }
-
-      let leftPane = null;
-if (location.hostname. includes('youtube.com')) {
-  const allLeftPanes = window.top.document.querySelectorAll('.autocomplete_pane.left_pane');
-  for (let i = 0; i < allLeftPanes.length; i++) {
-    if (allLeftPanes[i].getBoundingClientRect().width > 0) {
-      leftPane = allLeftPanes[i];
-      break;
+    // Save answer to database
+    function saveAnswer(question, answer) {
+        const key = question.trim().toLowerCase();
+        answerDB[key] = answer;
+        GM_setValue('answerDB', answerDB);
+        log('Saved answer:', key, '->', answer);
     }
-  }
-} else {
-  leftPane = settingsModal.querySelector('.autocomplete_pane.left_pane');
-}
-if (! leftPane) return;
 
-      // 백업/복원 버튼 컨테이너
-      const backupContainer = document.createElement('div');
-      backupContainer.style.cssText = 'display:flex;gap:8px;margin-top:16px;border-top:1px solid rgba(115,119,127,0.3);padding-top:16px;';
+    // Get answer from database
+    function getAnswer(question) {
+        const key = question.trim().toLowerCase();
+        return answerDB[key] || null;
+    }
 
-      // 내보내기 버튼
-      const exportBtn = document.createElement('button');
-      exportBtn.id = 'backup-export-btn';
-      exportBtn.className = 'autocomplete_button';
-      exportBtn.textContent = '💾 백업 내보내기';
-      exportBtn.onclick = exportBackup;
-      exportBtn.style.flex = '1';
+    // Find question element
+    function findQuestionElement() {
+        const selectors = [
+            '.question-text',
+            '.quiz-question',
+            '[data-question]',
+            '.prompt-text',
+            'h1.question',
+            'h2.question',
+            '.question-container p',
+            '.question-wrapper'
+        ];
 
-      // 불러오기 버튼
-      const importBtn = document.createElement('button');
-      importBtn.id = 'backup-import-btn';
-      importBtn.className = 'autocomplete_button';
-      importBtn.textContent = '📂 백업 불러오기';
-      importBtn.style.flex = '1';
-
-      // 숨겨진 파일 입력
-      const fileInput = document.createElement('input');
-      fileInput. type = 'file';
-      fileInput.accept = '.json';
-      fileInput.style.display = 'none';
-      fileInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    try {
-      await importBackup(file);
-      // 페이지 새로고침 (새 데이터 반영)
-      if (location.hostname.includes('youtube.com')) {
-        setTimeout(() => window.top.location.reload(), 1000);
-      } else {
-        setTimeout(() => location.reload(), 1000);
-      }
-          } catch (err) {
-            console.error('[CAC] Import failed:', err);
-          }
+        for (const selector of selectors) {
+            const el = document.querySelector(selector);
+            if (el && el.textContent.trim()) {
+                return el;
+            }
         }
-      };
+        return null;
+    }
 
-      importBtn.onclick = () => fileInput.click();
-const clearAllBtn = document.createElement('button');
-clearAllBtn.id = 'backup-clear-btn';
-clearAllBtn.className = 'autocomplete_button';
-clearAllBtn.textContent = '🗑️ 전체 삭제';
-clearAllBtn.style.flex = '1';
-clearAllBtn.style.background = '#dc3545';
-clearAllBtn.onclick = () => {
-  if (confirm('정말 모든 템플릿을 삭제할까요?')) {
-    localStorage.removeItem('ac.templates');
-    localStorage.removeItem('ac.  templates');
-    if (location.hostname.includes('youtube.com')) {
-      window.top.location.reload();
+    // Find answer input elements
+    function findAnswerInputs() {
+        return document.querySelectorAll([
+            'input[type="text"]:not([readonly])',
+            'input[type="radio"]',
+            'input[type="checkbox"]',
+            'textarea',
+            '.answer-option',
+            '[data-answer]',
+            '.choice-item'
+        ].join(', '));
+    }
+
+    // Find submit button
+    function findSubmitButton() {
+        const selectors = [
+            'button[type="submit"]',
+            'input[type="submit"]',
+            '.submit-btn',
+            '.next-btn',
+            'button.primary',
+            '[data-submit]',
+            'button:contains("Submit")',
+            'button:contains("Next")'
+        ];
+
+        for (const selector of selectors) {
+            try {
+                const el = document.querySelector(selector);
+                if (el) return el;
+            } catch (e) {
+                // Handle invalid selectors
+            }
+        }
+
+        // Fallback: find button with submit-like text
+        const buttons = document.querySelectorAll('button, input[type="button"]');
+        for (const btn of buttons) {
+            const text = btn.textContent.toLowerCase();
+            if (text.includes('submit') || text.includes('next') || text.includes('continue')) {
+                return btn;
+            }
+        }
+        return null;
+    }
+
+    // Fill answer
+    async function fillAnswer(input, answer) {
+        if (input.type === 'text' || input.tagName === 'TEXTAREA') {
+            input.focus();
+            input.value = answer;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (input.type === 'radio' || input.type === 'checkbox') {
+            if (input.value === answer || input.parentElement.textContent.includes(answer)) {
+                input.checked = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        } else if (input.classList.contains('answer-option') || input.classList.contains('choice-item')) {
+            if (input.textContent.includes(answer)) {
+                input.click();
+            }
+        }
+        input.style.backgroundColor = CONFIG.HIGHLIGHT_COLOR;
+    }
+
+    // Auto-complete function
+    async function autoComplete() {
+        const questionEl = findQuestionElement();
+        if (!questionEl) {
+            log('No question found');
+            return;
+        }
+
+        const question = questionEl.textContent.trim();
+        const savedAnswer = getAnswer(question);
+
+        if (savedAnswer) {
+            log('Found saved answer:', savedAnswer);
+            const inputs = findAnswerInputs();
+
+            for (const input of inputs) {
+                await fillAnswer(input, savedAnswer);
+                await randomDelay();
+            }
+
+            if (CONFIG.AUTO_SUBMIT) {
+                const submitBtn = findSubmitButton();
+                if (submitBtn) {
+                    await delay(500);
+                    submitBtn.click();
+                    log('Auto-submitted');
+                }
+            }
+        } else {
+            log('No saved answer for:', question);
+        }
+    }
+
+    // Learn mode - capture correct answers
+    function learnFromPage() {
+        const questionEl = findQuestionElement();
+        const correctEl = document.querySelector('.correct-answer, .right-answer, [data-correct="true"], .success');
+
+        if (questionEl && correctEl) {
+            const question = questionEl.textContent.trim();
+            const answer = correctEl.textContent.trim();
+            saveAnswer(question, answer);
+        }
+    }
+
+    // Settings panel
+    function createSettingsPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'autocomplete_settings';
+        panel.innerHTML = `
+            <style>
+                #autocomplete_settings {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #2d2d2d;
+                    color: #fff;
+                    padding: 20px;
+                    border-radius: 10px;
+                    z-index: 999999;
+                    min-width: 300px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                    font-family: Arial, sans-serif;
+                    display: none;
+                }
+                #autocomplete_settings.opened {
+                    display: block;
+                }
+                #autocomplete_settings h3 {
+                    margin: 0 0 15px 0;
+                    color: #4CAF50;
+                }
+                #autocomplete_settings label {
+                    display: block;
+                    margin: 10px 0;
+                }
+                #autocomplete_settings input[type="checkbox"] {
+                    margin-right: 10px;
+                }
+                #autocomplete_settings input[type="number"] {
+                    width: 60px;
+                    padding: 5px;
+                    margin: 0 5px;
+                }
+                #autocomplete_settings button {
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    margin: 5px;
+                }
+                #autocomplete_settings button:hover {
+                    background: #45a049;
+                }
+                #autocomplete_settings button.danger {
+                    background: #f44336;
+                }
+                #autocomplete_settings button.danger:hover {
+                    background: #da190b;
+                }
+                #autocomplete_settings .close-btn {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    background: none;
+                    border: none;
+                    color: #fff;
+                    font-size: 20px;
+                    cursor: pointer;
+                }
+            </style>
+            <button class="close-btn">&times;</button>
+            <h3>🎮 Templerun Auto-Complete+</h3>
+            <label>
+                <input type="checkbox" id="ac_debug" ${CONFIG.DEBUG ? 'checked' : ''}>
+                Debug Mode
+            </label>
+            <label>
+                <input type="checkbox" id="ac_autosubmit" ${CONFIG.AUTO_SUBMIT ? 'checked' : ''}>
+                Auto Submit
+            </label>
+            <label>
+                Delay:
+                <input type="number" id="ac_delay_min" value="${CONFIG.DELAY_MIN}" min="0" max="1000">
+                -
+                <input type="number" id="ac_delay_max" value="${CONFIG.DELAY_MAX}" min="0" max="2000">
+                ms
+            </label>
+            <div style="margin-top: 15px;">
+                <button id="ac_save">Save Settings</button>
+                <button id="ac_export">Export DB</button>
+                <button id="ac_import">Import DB</button>
+                <button id="ac_clear" class="danger">Clear DB</button>
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: #888;">
+                Answers in DB: <span id="ac_count">${Object.keys(answerDB).length}</span>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+
+        // Event listeners
+        panel.querySelector('.close-btn').addEventListener('click', () => {
+            panel.classList.remove('opened');
+        });
+
+        panel.querySelector('#ac_save').addEventListener('click', () => {
+            CONFIG.DEBUG = panel.querySelector('#ac_debug').checked;
+            CONFIG.AUTO_SUBMIT = panel.querySelector('#ac_autosubmit').checked;
+            CONFIG.DELAY_MIN = parseInt(panel.querySelector('#ac_delay_min').value);
+            CONFIG.DELAY_MAX = parseInt(panel.querySelector('#ac_delay_max').value);
+            GM_setValue('config', CONFIG);
+            alert('Settings saved!');
+        });
+
+        panel.querySelector('#ac_export').addEventListener('click', () => {
+            const data = JSON.stringify(answerDB, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'templerun_answers.json';
+            a.click();
+        });
+
+        panel.querySelector('#ac_import').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        answerDB = { ...answerDB, ...imported };
+                        GM_setValue('answerDB', answerDB);
+                        panel.querySelector('#ac_count').textContent = Object.keys(answerDB).length;
+                        alert('Import successful!');
+                    } catch (err) {
+                        alert('Import failed: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        panel.querySelector('#ac_clear').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all saved answers?')) {
+                answerDB = {};
+                GM_setValue('answerDB', answerDB);
+                panel.querySelector('#ac_count').textContent = '0';
+                alert('Database cleared!');
+            }
+        });
+
+        return panel;
+    }
+
+    // Toggle settings panel
+    function toggleSettings() {
+        let panel = document.querySelector('#autocomplete_settings');
+        if (!panel) {
+            panel = createSettingsPanel();
+        }
+        panel.classList.toggle('opened');
+    }
+
+    // Initialize
+    function init() {
+        log('Initializing Templerun Auto-Complete+');
+
+        // Load saved config
+        const savedConfig = GM_getValue('config', null);
+        if (savedConfig) {
+            Object.assign(CONFIG, savedConfig);
+        }
+
+        // Register menu command
+        if (typeof GM_registerMenuCommand !== 'undefined') {
+            GM_registerMenuCommand('⚙️ Settings', toggleSettings);
+            GM_registerMenuCommand('▶️ Run Auto-Complete', autoComplete);
+            GM_registerMenuCommand('📚 Learn from Page', learnFromPage);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key === 'a') {
+                autoComplete();
+            } else if (e.altKey && e.key === 's') {
+                toggleSettings();
+            } else if (e.altKey && e.key === 'l') {
+                learnFromPage();
+            }
+        });
+
+        // Auto-run on page load
+        if (document.readyState === 'complete') {
+            setTimeout(autoComplete, 1000);
+        } else {
+            window.addEventListener('load', () => setTimeout(autoComplete, 1000));
+        }
+
+        // Observer for dynamic content
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.addedNodes.length) {
+                    learnFromPage();
+                }
+            }
+        });
+
+        observer.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+
+        log('Initialization complete');
+    }
+
+    // Start when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-      location. reload();
+        init();
     }
-  }
-};
-      backupContainer.append(exportBtn, importBtn, clearAllBtn, fileInput);
-        // 토글 컨테이너
-const toggleContainer = document.createElement('div');
-toggleContainer.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(115,119,127,0.3);';
 
-// 라벨
-const toggleLabel = document.createElement('span');
-toggleLabel.textContent = '자동 완성 기능';
-toggleLabel.style.cssText = 'color:#fff;font-size:14px;';
+})();
 
-// 토글 스위치
-const toggleSwitch = document.createElement('div');
-const isEnabled = localStorage.getItem('ac. popup_enabled') !== 'false';
-toggleSwitch.style.cssText = `width:50px;height:26px;border-radius:13px;cursor:pointer;position:relative;transition:background 0.3s;background: ${isEnabled ? '#5c6bc0' : '#555'};`;
-
-const toggleKnob = document.createElement('div');
-toggleKnob.style.cssText = `width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.3s;left:${isEnabled ? '26px' : '2px'};`;
-toggleSwitch.appendChild(toggleKnob);
-
-toggleSwitch.onclick = () => {
-  const newState = localStorage.getItem('ac. popup_enabled') === 'false';
-  localStorage.setItem('ac. popup_enabled', newState);
-  toggleKnob.style.left = newState ? '26px' : '2px';
-  toggleSwitch.style.background = newState ? '#5c6bc0' : '#555';
-  updatePopupVisibility();
-
-};
-toggleContainer.append(toggleLabel, toggleSwitch);
-      leftPane.insertBefore(backupContainer,leftPane.children[2]);
-      leftPane.insertBefore(toggleContainer, backupContainer);
-
-      clearInterval(checkAndAddButtons);
-    }, 500);
-
-    // 20초 후 포기
-    setTimeout(() => clearInterval(checkAndAddButtons), 20000);
-  }
+// YouTube-specific escape key handler
 if (location.hostname.includes('youtube.com')) {
   window.top.document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.style.display = 'none';
+        el.classList.remove('opened');
       });
       window.top.document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.style. display = 'none';
+        el.classList.remove('opened');
       });
     }
   });
 }
-  // ===== 2. CSS 스타일 =====
-  GM_addStyle(`
-/* 팝업 스타일 */
-#autocomplete_popup {
-  display: flex;
-  position: absolute;
-  bottom: 48px;
-  width: calc(100% - 10px);
-  flex-direction: column;
-  height: max-content;
-  max-height: 150px;
-  overflow:  hidden scroll ! important;
-  z-index: 9;
-  background: rgb(56, 58, 62) !important;
-  border: 0px none !important;
-  border-radius: 12px 0 0 12px !important;
-}
-
-html #autocomplete_popup .autocomplete_item {
-  padding: 8px 28px;
-  line-height: normal;
-  word-break: keep-all;
-  white-space: pre-wrap;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  font-size: 14px !important;
-  color: rgba(255, 255, 255, 0.8) !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-}
-
-#autocomplete_popup .autocomplete_item:hover,
-#autocomplete_popup .autocomplete_item.selected {
-  background: rgb(79, 82, 88) !important;
-}
-
-#autocomplete_popup .autocomplete_item:active {
-  background: rgb(91, 94, 101) !important;
-}
-
-.autocomplete_subtext {
-  color: rgba(255, 255, 255, 0.5) !important;
-  font-size: 12px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-}
-
-/* 설정 UI 스타일 */
-#autocomplete_settings {
-  display: none;
-  position: fixed;
-  top: 32px;
-  bottom: 32px;
-  left: 32px;
-  right: 32px;
-  overflow-y: scroll;
-  padding: 24px;
-  gap: 24px;
-  background: rgba(56, 58, 62, 0.875);
-  border: 1px solid rgba(115, 119, 127, 0.75);
-  border-radius: 12px 0 0 12px !important;
-  backdrop-filter: blur(4px);
-  z-index: 99999;
-}
-
-#autocomplete_settings.opened {
-  display: flex;
-}
-
-.autocomplete_button {
-  display: flex;
-  flex-shrink: 0;
-  padding: 12px 24px;
-  border: 0.8px solid rgba(115, 119, 127, 0.5) !important;
-  border-radius: 6px;
-  line-height: normal;
-  align-items: center;
-  justify-content: center;
-  word-break: keep-all;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  background: rgba(0, 0, 0, 0) !important;
-  color: rgb(255, 255, 255) !important;
-  font-size: 14px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-  transition: background 0.2s cubic-bezier(0.2, 1, 0.5, 0.95);
-}
-
-.autocomplete_button:hover,
-.autocomplete_button.selected {
-  background: rgb(79, 82, 88) !important;
-}
-
-.autocomplete_button:active {
-  background: rgb(91, 94, 101) !important;
-}
-
-.autocomplete_button.left {
-  justify-content: flex-start;
-}
-
-#backup-export-btn,
-#backup-import-btn {
-  padding: 12px 24px;
-  border: 0.8px solid rgba(115, 119, 127, 0.5) !important;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0) !important;
-  color: rgb(255, 255, 255) !important;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s cubic-bezier(0.2, 1, 0.5, 0.95);
-  font-weight: bold;
-}
-
-#backup-export-btn:hover,
-#backup-import-btn:hover {
-  background: rgb(79, 82, 88) !important;
-}
-
-#backup-export-btn:active,
-#backup-import-btn:active {
-  background: rgb(91, 94, 101) !important;
-}
-
-.autocomplete_pane {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  gap: 8px;
-  flex-direction: column;
-  overflow-y: scroll;
-}
-
-.autocomplete_pane.right_pane {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  flex-direction: column;
-}
-
-/* 오른쪽 부분(right_pane) INPUT 스타일 */
-.autocomplete_pane.right_pane input {
-  background-color: rgb(21, 22, 25) !important;
-  color: rgb(255, 255, 255) !important;
-  border: 1.6px solid rgb(115, 119, 127) !important;
-  border-radius: 8px !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.autocomplete_pane.right_pane input:hover {
-  background-color: rgb(33, 34, 37) !important;
-  border-color: rgb(140, 145, 155) !important;
-}
-
-.autocomplete_pane.right_pane input:focus {
-  background-color: rgb(33, 34, 37) !important;
-  border-color: rgb(167, 171, 180) !important;
-}
-
-/* 오른쪽 부분(right_pane) DIV 라벨 스타일 */
-.autocomplete_pane.right_pane > div:not(input):not(button) {
-  color: rgb(255, 255, 255) !important;
-  font-size: 14px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-  font-weight: 400 !important;
-  padding: 0px !important;
-  margin: 0px !important;
-  line-height: 16.8px !important;
-}
-
-/* 오른쪽 부분(right_pane) BUTTON 스타일 */
-.autocomplete_pane.right_pane button {
-  background-color: rgba(0, 0, 0, 0) !important;
-  color: rgb(255, 255, 255) !important;
-  border: 0.8px solid rgba(115, 119, 127, 0.5) !important;
-  border-radius: 6px !important;
-  padding: 12px 24px !important;
-  font-size: 14px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif !important;
-  cursor: pointer !important;
-  transition: color 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), background-color 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), border-color 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), text-decoration-color 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), fill 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), stroke 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), opacity 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), box-shadow 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), transform 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), filter 0.2s cubic-bezier(0.2, 1, 0.5, 0.95), backdrop-filter 0.2s cubic-bezier(0.2, 1, 0.5, 0.95) !important;
-}
-
-.autocomplete_pane.right_pane button:hover {
-  background-color: rgb(79, 82, 88) !important;
-}
-
-.autocomplete_pane.right_pane button:active {
-  background-color: rgb(91, 94, 101) !important;
-}
-
-.autocomplete_input {
-  display: flex;
-  position: relative;
-  width: 100%;
-  margin: 0;
-  outline: none;
-  border: 2px solid rgb(115, 119, 127);
-  border-radius: 8px;
-  padding: 12px 16px;
-  line-height: normal;
-  align-items: center;
-  background: rgb(21, 22, 25);
-  color: white;
-  cursor: text;
-}
-
-.autocomplete_input:hover,
-.autocomplete_input:focus {
-  background: rgb(33, 34, 37);
-}
-
-.autocomplete_input:hover {
-  border-color: rgb(140, 145, 155);
-}
-
-.autocomplete_input:focus {
-  border-color: rgb(167, 171, 180);
-}
-
-.autocomplete_textarea {
-  display: flex;
-  position: relative;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  outline: none;
-  border: 2px solid rgb(115, 119, 127);
-  border-radius: 8px;
-  padding: 12px 16px;
-  line-height: normal;
-  align-items: center;
-  background: rgb(21, 22, 25);
-  color: white;
-  cursor: text;
-}
-
-.autocomplete_textarea:hover,
-.autocomplete_textarea:focus {
-  background: rgb(33, 34, 37);
-}
-
-.autocomplete_textarea:hover {
-  border-color: rgb(140, 145, 155);
-}
-
-.autocomplete_textarea:focus {
-  border-color: rgb(167, 171, 180);
-}
-
-.transition {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.2, 1, 0.5, 0.95);
-  transition-duration: 0.2s;
-}
-  `);
-
-  // ===== 3. MutationObserver로 right_pane 스타일 강제 적용 =====
-  let styleObserverInitialized = false;
-
-  const applyRightPaneStyles = () => {
-  const rightPane = document.querySelector('.autocomplete_pane.right_pane');
-  if (! rightPane) return;
-
-  // INPUT 요소들
-  rightPane.querySelectorAll('input'). forEach(input => {
-    input.style.backgroundColor = 'rgb(21, 22, 25)';
-    input.style. color = 'rgb(255, 255, 255)';
-    input.style.border = '1. 6px solid rgb(115, 119, 127)';
-    input.style.borderRadius = '8px';
-    input.style. padding = '12px 16px';
-    input.style. fontSize = '14px';
-    input.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-    input.style.width = '100%';
-    input.style.boxSizing = 'border-box';
-  });
-
-  // DIV 라벨 요소들 (모든 DIV에 스타일 적용 - TEXT 노드의 부모)
-    // DIV/LABEL/SPAN 등 다른 요소들
-  rightPane.querySelectorAll('div'). forEach(div => {
-    if (div.tagName !== 'INPUT' && div.tagName !== 'BUTTON') {
-      div.style.color = 'rgb(255, 255, 255)';
-      div.style.fontSize = '14px';
-      div.style. fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-      div.style.fontWeight = '400';
-      div. style.lineHeight = '16. 8px';
-    }
-  });
-
-  // TEXT 노드를 SPAN으로 감싸서 스타일 적용
-  rightPane.childNodes.forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE && node. textContent.trim().length > 0) {
-      const span = document.createElement('span');
-      span.style.color = 'rgb(255, 255, 255)';
-      span.style.fontSize = '14px';
-      span.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-      span.style.fontWeight = '400';
-      span.style.lineHeight = '16.8px';
-      span.style.display = 'block';
-      span.appendChild(node.cloneNode(true));
-      node. parentNode.insertBefore(span, node);
-      node.parentNode.removeChild(node);
-    }
-  });
-
-  // BUTTON 요소들
-  rightPane.querySelectorAll('button').forEach(button => {
-    button.style.backgroundColor = 'rgba(0, 0, 0, 0)';
-    button.style.color = 'rgb(255, 255, 255)';
-    button.style. border = '0.8px solid rgba(115, 119, 127, 0.5)';
-    button.style.borderRadius = '6px';
-    button.style.padding = '12px 24px';
-    button.style.fontSize = '14px';
-    button.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-    button.style. cursor = 'pointer';
-  });
-};
-  // DOM 변경 감시
-  const styleObserver = new MutationObserver(() => {
-    applyRightPaneStyles();
-  });
-
-  // 옵저버 시작
-  const startStyleObserver = () => {
-    if (!styleObserverInitialized) {
-      styleObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
-      });
-      styleObserverInitialized = true;
-      console.log('[CAC] Style observer started');
-    }
-    applyRightPaneStyles();
-  };
-
-  // 초기 적용 및 감시
-  startStyleObserver();
-
-  // ===== 4. SOOP font-family 강제 적용 =====
-  const applyFontFix = () => {
-    const items = document.querySelectorAll('#autocomplete_popup .autocomplete_item');
-    items.forEach(item => {
-      item.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Malgun Gothic", "맑은 고딕", Helvetica, Arial, sans-serif';
-      item.style.fontSize = '14px';
-      item.style.color = 'rgba(255, 255, 255, 0.8)';
-    });
-  };
-
-  // 요소가 생성/변경될 때마다 적용
-  const observer = new MutationObserver(() => {
-    applyFontFix();
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // 초기 적용
-  applyFontFix();
-  addBackupButtonsToSettings();
-
-function updateLeftPaneScrollbar(){
-  var target=document.querySelector('.autocomplete_pane.left_pane');
-  if(!target)return;
-  var rect=target. getBoundingClientRect();
-  var track=document.querySelector('.cac-scrollbar-track[data-target-id="leftpane"]');
-  if(rect.width===0||rect.height===0){
-    if(track)track.style.display='none';
-    return;
-  }
-  if(! track){track=createTrack('leftpane',null);}
-  track.style.display='flex';
-  track.style.top=rect.top+'px';
-  track.style.left=(rect.right-14)+'px';
-  track.style.height=rect.height+'px';
-  updateThumb(target,track);
-}
-
-function updateRightPaneScrollbar(){
-  var target=document.querySelector('.autocomplete_pane.right_pane');
-  if(!target)return;
-  var rect=target.getBoundingClientRect();
-  var track=document.querySelector('.cac-scrollbar-track[data-target-id="rightpane"]');
-  if(rect.width===0||rect.height===0){
-    if(track)track.style.display='none';
-    return;
-  }
-  if(!track){track=createTrack('rightpane',null);}
-  track.style.display='flex';
-  track.style.top=rect.top+'px';
-  track.style.left=(rect. right-14)+'px';
-  track.style.height=rect.height+'px';
-  updateThumb(target,track);
-}
-
-function updateSettingsScrollbar(){
-  var target=document. getElementById('autocomplete_settings');
-  if(!target)return;
-  var rect=target.getBoundingClientRect();
-  var track=document.querySelector('.cac-scrollbar-track[data-target-id="settings"]');
-  if(rect.width===0||rect.height===0){
-    if(track)track.style.display='none';
-    return;
-  }
-  if(! track){track=createTrack('settings',null);}
-  track.style.display='flex';
-  track.style.top=(rect.top+1)+'px';
-  track.style.left=(rect.right-14-1)+'px';
-  track.style.height=(rect.height-2)+'px';
-  updateThumb(target,track);
-}
-
-function updatePopupScrollbar(){
-  var popup=document.getElementById('autocomplete_popup');
-  if(!popup)return;
-  var rect=popup.getBoundingClientRect();
-  var track=popup.querySelector('.cac-scrollbar-track[data-target-id="popup"]');
-  if(rect.width===0||rect.height===0){
-    if(track)track.style.display='none';
-    return;
-  }
-  var wrapper=createPopupWrapper();
-  if(!wrapper)return;
-  if(!track){track=createTrack('popup',popup);}
-  track.style.display='flex';
-  updateThumb(wrapper,track);
-}
-
-var dragInfo=null;
-document.addEventListener('mousedown',function(e){
-if(e.target.classList.contains('cac-scrollbar-thumb')){
-var track=e.target.closest('.cac-scrollbar-track');
-var targetId=track.dataset.targetId;
-var target;
-if(targetId==='leftpane')target=document.querySelector('.autocomplete_pane.left_pane');
-else if(targetId==='rightpane')target=document.querySelector('.autocomplete_pane.right_pane');
-else if(targetId==='settings')target=document.getElementById('autocomplete_settings');
-else if(targetId==='popup')target=document.getElementById('autocomplete_popup');
-if(target){
-dragInfo={target:target,startY:e.clientY,startScrollTop:target.scrollTop};
-e.preventDefault();
-}
-}
-});
-document.addEventListener('mousemove',function(e){
-if(!dragInfo)return;
-var target=dragInfo.target;
-var deltaY=e.clientY-dragInfo.startY;
-var scrollHeight=target.scrollHeight;
-var clientHeight=target.clientHeight;
-var thumbHeight=Math.max((clientHeight/scrollHeight)*clientHeight,30);
-var scrollDelta=(deltaY/(clientHeight-thumbHeight))*(scrollHeight-clientHeight);
-target.scrollTop=dragInfo.startScrollTop+scrollDelta;
-});
-document.addEventListener('mouseup',function(){dragInfo=null;});
-
-function hideNativeScrollbar(){
-var settings=document.getElementById('autocomplete_settings');
-if(settings){settings.style.setProperty('scrollbar-width','none','important');}
-var panes=document.getElementsByClassName('autocomplete_pane');
-for(var i=0;i<panes.length;i++){
-panes[i].style.setProperty('scrollbar-width','none','important');
-panes[i].style.setProperty('padding-right','14px','important');
-}
-var popup=document.getElementById('autocomplete_popup');
-if(popup){
-popup.style.setProperty('scrollbar-width','none','important');
-popup.style.setProperty('overflow','hidden','important');
-}
-}
-
-var style=document.createElement('style');
-style.textContent='#autocomplete_settings: :-webkit-scrollbar,. autocomplete_pane::-webkit-scrollbar,#autocomplete_popup::-webkit-scrollbar{display:none! important;}';
-document.head.appendChild(style);
-
-function createTrack(targetId,parent){
-var track=document.createElement('div');
-track.className='cac-scrollbar-track';
-track.dataset.targetId=targetId;
-var isInside=(targetId==='popup');
-if(isInside){
-track.style.cssText='position:absolute;right:0;top:0;width:14px;height:100%;background:#2c2c2c;z-index:10;display:flex;flex-direction:column;pointer-events:none;';
-}else{
-track.style.cssText='position:fixed;width:14px;background:#2c2c2c;z-index:9999999;display:flex;flex-direction: column;pointer-events:none;';
-}
-var upBtn=document.createElement('div');
-upBtn.className='cac-scrollbar-up';
-upBtn. textContent='▲';
-upBtn.style.cssText='width:14px;height:14px;background:#2c2c2c;color:#9f9f9f;font-size:10px;display:flex;align-items:center;justify-content: center;cursor:pointer;user-select:none;pointer-events: auto;';
-upBtn.addEventListener('mouseenter',function(){this.style.color='#d1d1d1';});
-upBtn.addEventListener('mouseleave',function(){this.style.color='#9f9f9f';});
-upBtn.addEventListener('mousedown',function(){this.style.color='#d1d1d1';});
-upBtn.addEventListener('mouseup',function(){this.style.color='#9f9f9f';});
-upBtn.addEventListener('click',function(){var t;if(targetId==='leftpane')t=document.querySelector('.autocomplete_pane.left_pane');else if(targetId==='rightpane')t=document.querySelector('.autocomplete_pane.right_pane');else if(targetId==='settings')t=document.getElementById('autocomplete_settings');else if(targetId==='popup')t=document.getElementById('autocomplete_popup');if(t)t.scrollTop-=50;});
-var middle=document. createElement('div');
-middle.className='cac-scrollbar-middle';
-middle.style.cssText='flex: 1;position:relative;background:#2c2c2c;';
-var thumb=document.createElement('div');
-thumb.className='cac-scrollbar-thumb';
-thumb.style.cssText='position:absolute;left:50%;transform:translateX(-50%);width:9px;background:#9f9f9f;border-radius:4px;pointer-events:auto;cursor:pointer;';
-thumb.addEventListener('mouseenter',function(){this.style.background='#d1d1d1';});
-thumb.addEventListener('mouseleave',function(){if(! dragInfo)this.style.background='#9f9f9f';});
-middle.appendChild(thumb);
-var downBtn=document.createElement('div');
-downBtn.className='cac-scrollbar-down';
-downBtn.textContent='▼';
-downBtn.style.cssText='width:14px;height: 14px;background:#2c2c2c;color:#9f9f9f;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;pointer-events:auto;';
-downBtn.addEventListener('mouseenter',function(){this.style.color='#d1d1d1';});
-downBtn.addEventListener('mouseleave',function(){this.style.color='#9f9f9f';});
-downBtn.addEventListener('mousedown',function(){this.style.color='#d1d1d1';});
-downBtn.addEventListener('mouseup',function(){this.style.color='#9f9f9f';});
-downBtn.addEventListener('click',function(){var t;if(targetId==='leftpane')t=document.querySelector('.autocomplete_pane.left_pane');else if(targetId==='rightpane')t=document.querySelector('.autocomplete_pane.right_pane');else if(targetId==='settings')t=document.getElementById('autocomplete_settings');else if(targetId==='popup')t=document.getElementById('autocomplete_popup');if(t)t.scrollTop+=50;});
-track.appendChild(upBtn);
-track.appendChild(middle);
-track.appendChild(downBtn);
-if(parent){
-parent.appendChild(track);
-}else{
-document.body.appendChild(track);
-}
-return track;
-}
-
-function updateThumb(target,track){
-var thumb=track.querySelector('.cac-scrollbar-thumb');
-var scrollHeight=target.scrollHeight;
-var clientHeight=target.clientHeight;
-var scrollTop=target.scrollTop;
-var trackHeight=track.offsetHeight-28;
-if(scrollHeight<=clientHeight){
-thumb.style.display='none';
-}else{
-thumb.style.display='block';
-var thumbHeight=Math.max((clientHeight/scrollHeight)*trackHeight,30);
-var thumbTop=(scrollTop/(scrollHeight-clientHeight))*(trackHeight-thumbHeight);
-thumb.style.height=thumbHeight+'px';
-thumb.style.top=thumbTop+'px';
-}
-}
-
-function updateLeftPaneScrollbar(){
-var doc=(isYoutubePopup&&window. top)?window.top.document:document;
-var target=doc. querySelector('.autocomplete_pane.left_pane');
-if(!target)return;
-var rect=target.getBoundingClientRect();
-var track=document.querySelector('.cac-scrollbar-track[data-target-id="leftpane"]');
-if(rect.width===0||rect.height===0){
-if(track)track.style.display='none';
-return;
-}
-if(! track){track=createTrack('leftpane',null);}
-track.style.display='flex';
-track.style.top=rect.top+'px';
-track. style.left=(rect.right-14)+'px';
-track.style.height=rect.height+'px';
-updateThumb(target,track);
-}
-
-function updateRightPaneScrollbar(){
-var doc=(isYoutubePopup&&window.top)?window.top.document:document;
-var target=doc.querySelector('.autocomplete_pane.right_pane');
-if(!target)return;
-var rect=target.getBoundingClientRect();
-var track=document.querySelector('.cac-scrollbar-track[data-target-id="rightpane"]');
-if(rect.width===0||rect.height===0){
-if(track)track.style.display='none';
-return;
-}
-if(!track){track=createTrack('rightpane',null);}
-track.style.display='flex';
-track.style.top=rect.top+'px';
-track.style.left=(rect. right-14)+'px';
-track.style.height=rect. height+'px';
-updateThumb(target,track);
-}
-
-function updateSettingsScrollbar(){
-var target=document.getElementById('autocomplete_settings');
-if(!target)return;
-var rect=target.getBoundingClientRect();
-var track=document.querySelector('.cac-scrollbar-track[data-target-id="settings"]');
-if(rect.width===0||rect.height===0){
-if(track)track.style.display='none';
-return;
-}
-if(! track){track=createTrack('settings',null);}
-track.style.display='flex';
-track.style.top=(rect.top+1)+'px';
-track.style.left=(rect.right-14-1)+'px';
-track.style.height=(rect.height-2)+'px';
-updateThumb(target,track);
-}
-
-function createPopupWrapper(){
-var popup=document.getElementById('autocomplete_popup');
-if(!popup)return null;
-var wrapper=popup.querySelector('.cac-popup-wrapper');
-if(!wrapper){
-wrapper=document.createElement('div');
-wrapper.className='cac-popup-wrapper';
-wrapper.style.cssText='position:relative;width:100%;height:100%;overflow-y:auto;scrollbar-width:none;';
-while(popup.firstChild){
-wrapper.appendChild(popup.firstChild);
-}
-popup.appendChild(wrapper);
-}
-return wrapper;
-}
-  // ===== 4-1. 커스텀 스크롤바 =====
-function updatePopupScrollbar(){
-var popup=document.getElementById('autocomplete_popup');
-if(!popup)return;
-var rect=popup.getBoundingClientRect();
-var track=popup.querySelector('.cac-scrollbar-track[data-target-id="popup"]');
-if(rect.width===0||rect.height===0){
-if(track)track.style.display='none';
-return;
-}
-var wrapper=createPopupWrapper();
-if(!wrapper)return;
-if(!track){track=createTrack('popup',popup);}
-track.style.display='flex';
-updateThumb(wrapper,track);
-}
-
-setInterval(function(){
-hideNativeScrollbar();
-updateLeftPaneScrollbar();
-updateRightPaneScrollbar();
-updateSettingsScrollbar();
-updatePopupScrollbar();
-},50);
-
-console.log('[CAC] 커스텀 스크롤바 적용 완료');
-
-// ===== SOOP 복사/붙여넣기 활성화 =====
-function enableCopyPaste(){
-  var targets = [
-    '#write_area',
-    '#auqa_voice_textarea',
-    '#adb_auqa_voice_textarea'
-  ];
-
-  targets.forEach(function(selector){
-    var el = document.querySelector(selector);
-    if(!el) return;
-    if(el.dataset.copyPasteEnabled) return; // 중복 방지
-
-    // 이벤트 핸들러 제거
-    el.removeAttribute('onpaste');
-    el.removeAttribute('oncopy');
-    el.removeAttribute('ondragenter');
-    el.removeAttribute('ondrop');
-    el.removeAttribute('ondragover');
-
-    // 붙여넣기 직접 처리
-    el.addEventListener('paste', function(e){
-      e.preventDefault();
-      e.stopPropagation();
-
-      var text = (e.clipboardData || window. clipboardData).getData('text');
-      if(!text) return;
-
-      var sel = window.getSelection();
-      if(! sel. rangeCount) return;
-
-      // 현재 선택 영역 삭제 후 텍스트 삽입
-      var range = sel.getRangeAt(0);
-      range.deleteContents();
-      var textNode = document.createTextNode(text);
-      range.insertNode(textNode);
-
-      // 커서를 텍스트 끝으로 이동
-      range.setStartAfter(textNode);
-      range.setEndAfter(textNode);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }, true);
-
-    el.addEventListener('copy', function(e){ e.stopPropagation(); }, true);
-
-    el.dataset.copyPasteEnabled = 'true';
-  });
-}
-
-setInterval(enableCopyPaste, 500);
