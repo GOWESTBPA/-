@@ -305,10 +305,10 @@ if (location.hostname.includes('youtube.com')) {
   window.top.document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.style.display = 'none';
+        el.classList.remove('opened');
       });
       window.top.document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.style. display = 'none';
+        el.classList.remove('opened');
       });
     }
   });
