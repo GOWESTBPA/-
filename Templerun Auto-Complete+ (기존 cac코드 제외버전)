@@ -302,16 +302,21 @@ toggleContainer.append(toggleLabel, toggleSwitch);
     setTimeout(() => clearInterval(checkAndAddButtons), 20000);
   }
 if (location.hostname.includes('youtube.com')) {
-  window.top.document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.classList.remove('opened');
-      });
-      window.top.document.querySelectorAll('#autocomplete_settings').forEach(el => {
-        el.classList.remove('opened');
-      });
+  const setupSettingsHandler = setInterval(() => {
+    const iframe = document.querySelector('iframe#chatframe');
+    if (iframe && iframe.contentDocument) {
+      iframe.contentDocument.addEventListener('click', (e) => {
+        const target = e. target.closest('.autocomplete_item');
+        if (target && target. textContent.trim() === '설정') {
+          const settings = window.top.document.getElementById('autocomplete_settings');
+          if (settings) {
+            settings.classList.add('opened');
+          }
+        }
+      }, true);
+      clearInterval(setupSettingsHandler);
     }
-  });
+  }, 500);
 }
   // ===== 2. CSS 스타일 =====
   GM_addStyle(`
