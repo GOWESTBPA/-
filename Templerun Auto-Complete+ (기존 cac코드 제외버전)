@@ -301,13 +301,14 @@ toggleContainer.append(toggleLabel, toggleSwitch);
     // 20초 후 포기
     setTimeout(() => clearInterval(checkAndAddButtons), 20000);
   }
-if (location.hostname.includes('youtube.com')) {
+if (location.hostname. includes('youtube.com')) {
+  // 설정 버튼 클릭 핸들러
   const setupSettingsHandler = setInterval(() => {
     const iframe = document.querySelector('iframe#chatframe');
     if (iframe && iframe.contentDocument) {
       iframe.contentDocument.addEventListener('click', (e) => {
-        const target = e. target.closest('.autocomplete_item');
-        if (target && target. textContent.trim() === '설정') {
+        const target = e.target.closest('.autocomplete_item');
+        if (target && target.textContent.trim() === '설정') {
           const settings = window.top.document.getElementById('autocomplete_settings');
           if (settings) {
             settings.classList.add('opened');
@@ -317,6 +318,16 @@ if (location.hostname.includes('youtube.com')) {
       clearInterval(setupSettingsHandler);
     }
   }, 500);
+
+  // ESC 핸들러 (window.top에서 감지)
+  window.top.document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const settings = window.top.document.getElementById('autocomplete_settings');
+      if (settings) {
+        settings.classList.remove('opened');
+      }
+    }
+  });
 }
   // ===== 2. CSS 스타일 =====
   GM_addStyle(`
