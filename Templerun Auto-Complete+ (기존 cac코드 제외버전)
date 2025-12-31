@@ -302,17 +302,16 @@ toggleContainer.append(toggleLabel, toggleSwitch);
     setTimeout(() => clearInterval(checkAndAddButtons), 20000);
   }
 if (location.hostname. includes('youtube.com')) {
-  // 설정 팝업 클릭 핸들러
+  // 설정 버튼 클릭 핸들러
   const setupSettingsHandler = setInterval(() => {
     const iframe = document.querySelector('iframe#chatframe');
     if (iframe && iframe.contentDocument) {
       iframe.contentDocument.addEventListener('click', (e) => {
-        const target = e. target.closest('.autocomplete_item');
+        const target = e.target.closest('.autocomplete_item');
         if (target && target.textContent.trim() === '설정') {
-          const allSettings = window.top.document. querySelectorAll('#autocomplete_settings');
-          const ourSettings = allSettings[allSettings.length - 1];
-          if (ourSettings) {
-            ourSettings. classList.add('opened');
+          const settings = window.top.document.getElementById('autocomplete_settings');
+          if (settings) {
+            settings.classList.add('opened');
           }
         }
       }, true);
@@ -320,16 +319,15 @@ if (location.hostname. includes('youtube.com')) {
     }
   }, 500);
 
-    // ESC 핸들러 (window.top에서 감지)
-  window.top.document. addEventListener('keydown', (e) => {
+  // ESC 핸들러 (window.top에서 감지)
+  window.top.document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-      const ourSettings = allSettings[allSettings.length - 1];
-      if (ourSettings) {
-        ourSettings. classList.remove('opened');
+      const settings = window.top.document.getElementById('autocomplete_settings');
+      if (settings) {
+        settings.classList.remove('opened');
       }
     }
-  }, true);  // ← capture: true 추가! 
+  });
 }
   // ===== 2. CSS 스타일 =====
   GM_addStyle(`
