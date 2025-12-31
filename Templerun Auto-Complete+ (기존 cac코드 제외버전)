@@ -302,20 +302,18 @@ toggleContainer.append(toggleLabel, toggleSwitch);
     setTimeout(() => clearInterval(checkAndAddButtons), 20000);
   }
 if (location.hostname. includes('youtube.com')) {
-  // 설정 버튼 클릭 핸들러
+  // 설정 팝업 클릭 핸들러
   const setupSettingsHandler = setInterval(() => {
     const iframe = document.querySelector('iframe#chatframe');
     if (iframe && iframe.contentDocument) {
-            iframe.contentDocument.addEventListener('click', (e) => {
+      iframe.contentDocument.addEventListener('click', (e) => {
         const target = e. target.closest('.autocomplete_item');
-        if (target && target.textContent. trim() === '설정') {
-          const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-          const ourSettings = allSettings[allSettings. length - 1];
+        if (target && target.textContent.trim() === '설정') {
+          const allSettings = window.top.document. querySelectorAll('#autocomplete_settings');
+          const ourSettings = allSettings[allSettings.length - 1];
           if (ourSettings) {
-            ourSettings.classList. add('opened');
+            ourSettings. classList.add('opened');
           }
-        }
-      }, true);
         }
       }, true);
       clearInterval(setupSettingsHandler);
