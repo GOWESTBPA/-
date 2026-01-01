@@ -38,7 +38,7 @@ function updatePopupVisibility() {
   if (isUpdating) return;
   isUpdating = true;
 
-  const isEnabled = localStorage.getItem('ac. popup_enabled') !== 'false';
+  const isEnabled = localStorage.getItem('ac.popup_enabled') !== 'false';
 
   let popups;
   if (isYoutubePopup) {
@@ -186,14 +186,14 @@ if(isYoutubeForStyle){
       if (!settingsModal) return;
 
       // 이미 백업 버튼이 있으면 스킵
-      if (window.top.document.getElementById('backup-export-btn')) {
+      if (doc.getElementById('backup-export-btn')) {
         clearInterval(checkAndAddButtons);
         return;
       }
 
       let leftPane = null;
-if (location.hostname. includes('youtube.com')) {
-  const allLeftPanes = window.top.document.querySelectorAll('.autocomplete_pane.left_pane');
+if (isYT) {
+  const allLeftPanes = doc.querySelectorAll('.autocomplete_pane.left_pane');
   for (let i = 0; i < allLeftPanes.length; i++) {
     if (allLeftPanes[i].getBoundingClientRect().width > 0) {
       leftPane = allLeftPanes[i];
@@ -206,11 +206,11 @@ if (location.hostname. includes('youtube.com')) {
 if (! leftPane) return;
 
       // 백업/복원 버튼 컨테이너
-      const backupContainer = document.createElement('div');
+      const backupContainer = doc.createElement('div');
       backupContainer.style.cssText = 'display:flex;gap:8px;margin-top:16px;border-top:1px solid rgba(115,119,127,0.3);padding-top:16px;';
 
       // 내보내기 버튼
-      const exportBtn = document.createElement('button');
+      const exportBtn = doc.createElement('button');
       exportBtn.id = 'backup-export-btn';
       exportBtn.className = 'autocomplete_button';
       exportBtn.textContent = '💾 백업 내보내기';
@@ -218,15 +218,15 @@ if (! leftPane) return;
       exportBtn.style.flex = '1';
 
       // 불러오기 버튼
-      const importBtn = document.createElement('button');
+      const importBtn = doc.createElement('button');
       importBtn.id = 'backup-import-btn';
       importBtn.className = 'autocomplete_button';
       importBtn.textContent = '📂 백업 불러오기';
       importBtn.style.flex = '1';
 
       // 숨겨진 파일 입력
-      const fileInput = document.createElement('input');
-      fileInput. type = 'file';
+      const fileInput = doc.createElement('input');
+      fileInput.type = 'file';
       fileInput.accept = '.json';
       fileInput.style.display = 'none';
       fileInput.onchange = async (e) => {
@@ -247,7 +247,7 @@ if (! leftPane) return;
       };
 
       importBtn.onclick = () => fileInput.click();
-const clearAllBtn = document.createElement('button');
+const clearAllBtn = doc.createElement('button');
 clearAllBtn.id = 'backup-clear-btn';
 clearAllBtn.className = 'autocomplete_button';
 clearAllBtn.textContent = '🗑️ 전체 삭제';
@@ -256,36 +256,35 @@ clearAllBtn.style.background = '#dc3545';
 clearAllBtn.onclick = () => {
   if (confirm('정말 모든 템플릿을 삭제할까요?')) {
     localStorage.removeItem('ac.templates');
-    localStorage.removeItem('ac.  templates');
     if (location.hostname.includes('youtube.com')) {
       window.top.location.reload();
     } else {
-      location. reload();
+      location.reload();
     }
   }
 };
       backupContainer.append(exportBtn, importBtn, clearAllBtn, fileInput);
         // 토글 컨테이너
-const toggleContainer = document.createElement('div');
+const toggleContainer = doc.createElement('div');
 toggleContainer.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(115,119,127,0.3);';
 
 // 라벨
-const toggleLabel = document.createElement('span');
+const toggleLabel = doc.createElement('span');
 toggleLabel.textContent = '자동 완성 기능';
 toggleLabel.style.cssText = 'color:#fff;font-size:14px;';
 
 // 토글 스위치
-const toggleSwitch = document.createElement('div');
-const isEnabled = localStorage.getItem('ac. popup_enabled') !== 'false';
+const toggleSwitch = doc.createElement('div');
+const isEnabled = localStorage.getItem('ac.popup_enabled') !== 'false';
 toggleSwitch.style.cssText = `width:50px;height:26px;border-radius:13px;cursor:pointer;position:relative;transition:background 0.3s;background: ${isEnabled ? '#5c6bc0' : '#555'};`;
 
-const toggleKnob = document.createElement('div');
+const toggleKnob = doc.createElement('div');
 toggleKnob.style.cssText = `width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.3s;left:${isEnabled ? '26px' : '2px'};`;
 toggleSwitch.appendChild(toggleKnob);
 
 toggleSwitch.onclick = () => {
-  const newState = localStorage.getItem('ac. popup_enabled') === 'false';
-  localStorage.setItem('ac. popup_enabled', newState);
+  const newState = localStorage.getItem('ac.popup_enabled') === 'false';
+  localStorage.setItem('ac.popup_enabled', newState);
   toggleKnob.style.left = newState ? '26px' : '2px';
   toggleSwitch.style.background = newState ? '#5c6bc0' : '#555';
   updatePopupVisibility();
