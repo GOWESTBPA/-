@@ -336,7 +336,7 @@ if (location.hostname.includes('youtube.com')) {
   flex-direction: column;
   height: max-content;
   max-height: 150px;
-  overflow:  hidden scroll ! important;
+ overflow-y: scroll !important;
   z-index: 9;
   background: rgb(56, 58, 62) !important;
   border: 0px none !important;
