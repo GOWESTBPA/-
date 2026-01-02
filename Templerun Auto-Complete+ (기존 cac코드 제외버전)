@@ -181,32 +181,46 @@ if(isYoutubeForStyle){
   function addBackupButtonsToSettings() {
     const isYT = location.hostname.includes('youtube.com');
     const doc = isYT ? window.top.document : document;
+    
+    let backupContainer = null;
+    let toggleContainer = null;
+    
     const checkAndAddButtons = setInterval(() => {
       const settingsModal = doc.getElementById('autocomplete_settings');
       if (!settingsModal) return;
 
-      // 이미 백업 버튼이 있으면 스킵
-      if (doc.getElementById('backup-export-btn')) {
-        clearInterval(checkAndAddButtons);
-        return;
+      // 현재 보이는 leftPane 찾기
+      let leftPane = null;
+      if (isYT) {
+        const allLeftPanes = doc.querySelectorAll('.autocomplete_pane.left_pane');
+        for (let i = 0; i < allLeftPanes.length; i++) {
+          if (allLeftPanes[i].getBoundingClientRect().width > 0) {
+            leftPane = allLeftPanes[i];
+            break;
+          }
+        }
+      } else {
+        leftPane = settingsModal.querySelector('.autocomplete_pane.left_pane');
+      }
+      if (!leftPane) return;
+
+      // 이미 버튼이 있으면 -> 보이는 leftPane에 있는지 확인
+      const existingBtn = doc.getElementById('backup-export-btn');
+      if (existingBtn) {
+        // 버튼이 현재 보이는 leftPane 안에 없으면 옮기기
+        if (!leftPane.contains(existingBtn)) {
+          backupContainer = existingBtn.parentElement;
+          toggleContainer = backupContainer.previousElementSibling;
+          if (backupContainer && toggleContainer) {
+            leftPane.insertBefore(backupContainer, leftPane.children[2]);
+            leftPane.insertBefore(toggleContainer, backupContainer);
+          }
+        }
+        return; // 이미 있으니까 새로 만들 필요 없음
       }
 
-      let leftPane = null;
-if (isYT) {
-  const allLeftPanes = doc.querySelectorAll('.autocomplete_pane.left_pane');
-  for (let i = 0; i < allLeftPanes.length; i++) {
-    if (allLeftPanes[i].getBoundingClientRect().width > 0) {
-      leftPane = allLeftPanes[i];
-      break;
-    }
-  }
-} else {
-  leftPane = settingsModal.querySelector('.autocomplete_pane.left_pane');
-}
-if (! leftPane) return;
-
       // 백업/복원 버튼 컨테이너
-      const backupContainer = doc.createElement('div');
+      backupContainer = doc.createElement('div');
       backupContainer.style.cssText = 'display:flex;gap:8px;margin-top:16px;border-top:1px solid rgba(115,119,127,0.3);padding-top:16px;';
 
       // 내보내기 버튼
@@ -265,7 +279,7 @@ clearAllBtn.onclick = () => {
 };
       backupContainer.append(exportBtn, importBtn, clearAllBtn, fileInput);
         // 토글 컨테이너
-const toggleContainer = doc.createElement('div');
+toggleContainer = doc.createElement('div');
 toggleContainer.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(115,119,127,0.3);';
 
 // 라벨
@@ -293,8 +307,6 @@ toggleSwitch.onclick = () => {
 toggleContainer.append(toggleLabel, toggleSwitch);
       leftPane.insertBefore(backupContainer,leftPane.children[2]);
       leftPane.insertBefore(toggleContainer, backupContainer);
-
-      clearInterval(checkAndAddButtons);
     }, 500);
 
     // 20초 후 포기
@@ -1018,3 +1030,4 @@ function enableCopyPaste(){
 
 setInterval(enableCopyPaste, 500);
 // 이 아래부터는 CAC 원본 코드 (https://github.com/GOWESTBPA/-/blob/main/5.%20%EA%B8%B0%EC%A1%B4%20CAC%20%EC%BD%94%EB%93%9C) //
+})();
