@@ -184,6 +184,13 @@ if(isYoutubeForStyle){
     const isYT = location.hostname.includes('youtube.com');
     const doc = isYT ? window.top.document : document;
     
+    // 유튜브 iframe 환경을 위해 함수를 window.top에 등록
+    if (isYT) {
+      window.top.cacExportBackup = exportBackup;
+      window.top.cacImportBackup = importBackup;
+      window.top.cacStorage = storage;
+    }
+    
     let backupContainer = null;
     let toggleContainer = null;
     
@@ -233,7 +240,11 @@ if(isYoutubeForStyle){
       exportBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        exportBackup();
+        if (location.hostname.includes('youtube.com')) {
+          window.top.cacExportBackup();
+        } else {
+          exportBackup();
+        }
       });
       exportBtn.style.flex = '1';
 
@@ -255,7 +266,11 @@ if(isYoutubeForStyle){
         const file = e.target.files[0];
         if (file) {
           try {
-            await importBackup(file);
+            if (location.hostname.includes('youtube.com')) {
+              await window.top.cacImportBackup(file);
+            } else {
+              await importBackup(file);
+            }
             // 페이지 새로고침 (새 데이터 반영)
             if (location.hostname.includes('youtube.com')) {
               setTimeout(() => window.top.location.reload(), 1000);
@@ -283,10 +298,11 @@ clearAllBtn.addEventListener('click', function(e) {
   e.preventDefault();
   e.stopPropagation();
   if (confirm('정말 모든 템플릿을 삭제할까요?')) {
-    storage.removeItem('ac.templates');
     if (location.hostname.includes('youtube.com')) {
+      window.top.cacStorage.removeItem('ac.templates');
       window.top.location.reload();
     } else {
+      storage.removeItem('ac.templates');
       location.reload();
     }
   }
@@ -313,8 +329,9 @@ toggleSwitch.appendChild(toggleKnob);
 toggleSwitch.addEventListener('click', function(e) {
   e.preventDefault();
   e.stopPropagation();
-  const newState = storage.getItem('ac.popup_enabled') === 'false';
-  storage.setItem('ac.popup_enabled', newState);
+  const currentStorage = location.hostname.includes('youtube.com') ? window.top.cacStorage : storage;
+  const newState = currentStorage.getItem('ac.popup_enabled') === 'false';
+  currentStorage.setItem('ac.popup_enabled', newState);
 
   const knob = this.querySelector('div');
   knob.style.left = newState ? '26px' : '2px';
