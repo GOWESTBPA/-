@@ -93,23 +93,33 @@ if(isYoutubeForStyle){
   var ytStyleObserver = new MutationObserver(function(){
     var doc = window.top.document;
     var allSettings = doc.querySelectorAll('#autocomplete_settings');
-    
+
     // 중복 설정 UI 제거 - 마지막 것만 남기고 나머지 삭제
     if(allSettings.length > 1){
       for(var i = 0; i < allSettings.length - 1; i++){
         allSettings[i].remove();
       }
     }
-    
-    var settingsUI = doc.getElementById('autocomplete_settings');
 
-    if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
-      var styleEl = document.createElement('style');
-      styleEl.id = 'cac-yt-settings-style';
-      styleEl.textContent = '#autocomplete_settings, #autocomplete_settings * { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif ! important; font-size: 14px !important; color: rgb(255, 255, 255) !important; }';
-      doc.head.appendChild(styleEl);
+    var ytStyleObserver = new MutationObserver(function(){
+  var doc = window. top.document;
+  var settingsUI = doc.getElementById('autocomplete_settings');
+
+  if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
+    var styleEl = document.createElement('style');
+    styleEl.id = 'cac-yt-settings-style';
+    styleEl.textContent = '#autocomplete_settings, #autocomplete_settings * { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif !important; font-size: 14px !important; color: rgb(255, 255, 255) !important; }';
+    doc.head. appendChild(styleEl);
+  }
+
+  // 중복 설정 UI 제거 (마지막 하나만 유지)
+  var allSettings = doc.querySelectorAll('#autocomplete_settings');
+  if (allSettings.length > 1) {
+    for (var i = 0; i < allSettings.length - 1; i++) {
+      allSettings[i].remove();
     }
-  });
+  }
+});
   ytStyleObserver.observe(window.top.document.body, { childList: true, subtree:  true });
 }
 
@@ -192,17 +202,17 @@ if(isYoutubeForStyle){
   function addBackupButtonsToSettings() {
     const isYT = location.hostname.includes('youtube.com');
     const doc = isYT ? window.top.document : document;
-    
+
     // 유튜브 iframe 환경을 위해 함수를 window.top에 등록
     if (isYT) {
       window.top.cacExportBackup = exportBackup;
       window.top.cacImportBackup = importBackup;
       window.top.cacStorage = storage;
     }
-    
+
     let backupContainer = null;
     let toggleContainer = null;
-    
+
     const checkAndAddButtons = setInterval(() => {
       const settingsModal = doc.getElementById('autocomplete_settings');
       if (!settingsModal) return;
@@ -372,12 +382,11 @@ if (location.hostname.includes('youtube.com')) {
     }
 
     window.top.document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        // 모든 설정 UI 닫기
-        const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-        allSettings.forEach(el => el.classList.remove('opened'));
-      }
-    }, true);
+  if (e.key === 'Escape') {
+    const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
+    allSettings.forEach(el => el.classList.remove('opened'));
+  }
+}, true);
   }, 5000);
 }
   // ===== 2. CSS 스타일 =====
@@ -1073,5 +1082,3 @@ function enableCopyPaste(){
 }
 
 setInterval(enableCopyPaste, 500);
-// 이 아래부터는 CAC 원본 코드 (https://github.com/GOWESTBPA/-/blob/main/5.%20%EA%B8%B0%EC%A1%B4%20CAC%20%EC%BD%94%EB%93%9C) //
-})();
