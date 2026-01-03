@@ -230,7 +230,11 @@ if(isYoutubeForStyle){
       exportBtn.id = 'backup-export-btn';
       exportBtn.className = 'autocomplete_button';
       exportBtn.textContent = '💾 백업 내보내기';
-      exportBtn.onclick = exportBackup;
+      exportBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        exportBackup();
+      });
       exportBtn.style.flex = '1';
 
       // 불러오기 버튼
@@ -245,31 +249,39 @@ if(isYoutubeForStyle){
       fileInput.type = 'file';
       fileInput.accept = '.json';
       fileInput.style.display = 'none';
-      fileInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    try {
-      await importBackup(file);
-      // 페이지 새로고침 (새 데이터 반영)
-      if (location.hostname.includes('youtube.com')) {
-        setTimeout(() => window.top.location.reload(), 1000);
-      } else {
-        setTimeout(() => location.reload(), 1000);
-      }
+      fileInput.addEventListener('change', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = e.target.files[0];
+        if (file) {
+          try {
+            await importBackup(file);
+            // 페이지 새로고침 (새 데이터 반영)
+            if (location.hostname.includes('youtube.com')) {
+              setTimeout(() => window.top.location.reload(), 1000);
+            } else {
+              setTimeout(() => location.reload(), 1000);
+            }
           } catch (err) {
             console.error('[CAC] Import failed:', err);
           }
         }
-      };
+      });
 
-      importBtn.onclick = () => fileInput.click();
+      importBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      });
 const clearAllBtn = doc.createElement('button');
 clearAllBtn.id = 'backup-clear-btn';
 clearAllBtn.className = 'autocomplete_button';
 clearAllBtn.textContent = '🗑️ 전체 삭제';
 clearAllBtn.style.flex = '1';
 clearAllBtn.style.background = '#dc3545';
-clearAllBtn.onclick = () => {
+clearAllBtn.addEventListener('click', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
   if (confirm('정말 모든 템플릿을 삭제할까요?')) {
     storage.removeItem('ac.templates');
     if (location.hostname.includes('youtube.com')) {
@@ -278,7 +290,7 @@ clearAllBtn.onclick = () => {
       location.reload();
     }
   }
-};
+});
       backupContainer.append(exportBtn, importBtn, clearAllBtn, fileInput);
         // 토글 컨테이너
 toggleContainer = doc.createElement('div');
@@ -298,7 +310,9 @@ const toggleKnob = doc.createElement('div');
 toggleKnob.style.cssText = `width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.3s;left:${isEnabled ? '26px' : '2px'};`;
 toggleSwitch.appendChild(toggleKnob);
 
-toggleSwitch.onclick = function() {
+toggleSwitch.addEventListener('click', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
   const newState = storage.getItem('ac.popup_enabled') === 'false';
   storage.setItem('ac.popup_enabled', newState);
 
@@ -307,7 +321,7 @@ toggleSwitch.onclick = function() {
   this.style.background = newState ? '#5c6bc0' : '#555';
 
   updatePopupVisibility();
-};
+});
 toggleContainer.append(toggleLabel, toggleSwitch);
       leftPane.insertBefore(backupContainer,leftPane.children[2]);
       leftPane.insertBefore(toggleContainer, backupContainer);
