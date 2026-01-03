@@ -356,29 +356,18 @@ toggleContainer.append(toggleLabel, toggleSwitch);
     // 20초 후 포기
     setTimeout(() => clearInterval(checkAndAddButtons), 20000);
   }
-if (location.hostname.includes('youtube.com')) {
-  // 5초 후에 실행 (CAC 원본 코드가 다 실행된 후)
+if (location.href.includes('youtube.com/live_chat')) {
   setTimeout(() => {
-    const iframe = document.querySelector('iframe#chatframe');
-    if (iframe && iframe.contentDocument) {
-      const popup = iframe.contentDocument.querySelector('#autocomplete_popup');
-      if (popup) {
-        popup.addEventListener('click', (e) => {
-          const target = e.target.closest('.autocomplete_item');
-          if (target && target.textContent.trim() === '설정') {
-            const settings = window.top.document.querySelector('#autocomplete_settings');
-            if (settings) settings.classList.add('opened');
-          }
-        }, true);
-      }
+    const popup = document.querySelector('#autocomplete_popup');
+    if (popup) {
+      popup.addEventListener('click', (e) => {
+        const target = e.target.closest('.autocomplete_item');
+        if (target && target.textContent.trim() === '설정') {
+          const settings = window.top.document.querySelector('#autocomplete_settings');
+          if (settings) settings.classList.add('opened');
+        }
+      }, true);
     }
-
-    window.top.document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-        allSettings.forEach(el => el.classList.remove('opened'));
-      }
-    }, true);
   }, 5000);
 }
   // ===== 2. CSS 스타일 =====
