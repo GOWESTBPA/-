@@ -20,6 +20,8 @@
   'use strict';
 let isUpdating = false;
 const isYoutubePopup = location.hostname.includes('youtube');
+// ===== 공통 저장소 변수 (유튜브에서는 window.top.localStorage 사용) =====
+const storage = isYoutubePopup ? window.top.localStorage : localStorage;
 
 function getPopupIframe() {
   if (! isYoutubePopup) return null;
@@ -38,7 +40,7 @@ function updatePopupVisibility() {
   if (isUpdating) return;
   isUpdating = true;
 
-  const isEnabled = localStorage.getItem('ac.popup_enabled') !== 'false';
+  const isEnabled = storage.getItem('ac.popup_enabled') !== 'false';
 
   let popups;
   if (isYoutubePopup) {
@@ -104,8 +106,8 @@ if(isYoutubeForStyle){
 
     // ===== 1. 백업/복원 유틸 =====
   function exportBackup() {
-    const templates = JSON.parse(localStorage.getItem('ac.templates') || '[]');
-    const settings = JSON.parse(localStorage.getItem('ac.settings') || '{}');
+    const templates = JSON.parse(storage.getItem('ac.templates') || '[]');
+    const settings = JSON.parse(storage.getItem('ac.settings') || '{}');
 
     const backup = {
       version: '2024.12.22',
@@ -154,8 +156,8 @@ if(isYoutubeForStyle){
           }
 
           // 새 데이터 저장
-          localStorage.setItem('ac.templates', JSON.stringify(backup.templates));
-          localStorage. setItem('ac.settings', JSON.stringify(backup.settings));
+          storage.setItem('ac.templates', JSON.stringify(backup.templates));
+          storage. setItem('ac.settings', JSON.stringify(backup.settings));
 
           console.log('[CAC] Backup restored successfully');
           alert(`✅ 백업이 복원되었습니다!\n템플릿: ${backup.templates. length}개\n설정이 업데이트되었습니다. `);
@@ -269,7 +271,7 @@ clearAllBtn.style.flex = '1';
 clearAllBtn.style.background = '#dc3545';
 clearAllBtn.onclick = () => {
   if (confirm('정말 모든 템플릿을 삭제할까요?')) {
-    localStorage.removeItem('ac.templates');
+    storage.removeItem('ac.templates');
     if (location.hostname.includes('youtube.com')) {
       window.top.location.reload();
     } else {
@@ -289,7 +291,7 @@ toggleLabel.style.cssText = 'color:#fff;font-size:14px;';
 
 // 토글 스위치
 const toggleSwitch = doc.createElement('div');
-const isEnabled = localStorage.getItem('ac.popup_enabled') !== 'false';
+const isEnabled = storage.getItem('ac.popup_enabled') !== 'false';
 toggleSwitch.style.cssText = `width:50px;height:26px;border-radius:13px;cursor:pointer;position:relative;transition:background 0.3s;background: ${isEnabled ? '#5c6bc0' : '#555'};`;
 
 const toggleKnob = doc.createElement('div');
@@ -297,7 +299,6 @@ toggleKnob.style.cssText = `width:22px;height:22px;border-radius:50%;background:
 toggleSwitch.appendChild(toggleKnob);
 
 toggleSwitch.onclick = function() {
-  const storage = window.top.localStorage;
   const newState = storage.getItem('ac.popup_enabled') === 'false';
   storage.setItem('ac.popup_enabled', newState);
 
