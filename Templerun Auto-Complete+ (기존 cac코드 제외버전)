@@ -296,13 +296,16 @@ const toggleKnob = doc.createElement('div');
 toggleKnob.style.cssText = `width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.3s;left:${isEnabled ? '26px' : '2px'};`;
 toggleSwitch.appendChild(toggleKnob);
 
-toggleSwitch.onclick = () => {
-  const newState = localStorage.getItem('ac.popup_enabled') === 'false';
-  localStorage.setItem('ac.popup_enabled', newState);
-  toggleKnob.style.left = newState ? '26px' : '2px';
-  toggleSwitch.style.background = newState ? '#5c6bc0' : '#555';
+toggleSwitch.onclick = function() {
+  const storage = window.top.localStorage;
+  const newState = storage.getItem('ac.popup_enabled') === 'false';
+  storage.setItem('ac.popup_enabled', newState);
+  
+  const knob = this.querySelector('div');
+  knob.style.left = newState ? '26px' : '2px';
+  this.style.background = newState ?  '#5c6bc0' :  '#555';
+  
   updatePopupVisibility();
-
 };
 toggleContainer.append(toggleLabel, toggleSwitch);
       leftPane.insertBefore(backupContainer,leftPane.children[2]);
