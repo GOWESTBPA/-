@@ -101,25 +101,15 @@ if(isYoutubeForStyle){
       }
     }
 
-    var ytStyleObserver = new MutationObserver(function(){
-  var doc = window. top.document;
-  var settingsUI = doc.getElementById('autocomplete_settings');
+    var settingsUI = doc.getElementById('autocomplete_settings');
 
-  if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
-    var styleEl = document.createElement('style');
-    styleEl.id = 'cac-yt-settings-style';
-    styleEl.textContent = '#autocomplete_settings, #autocomplete_settings * { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif !important; font-size: 14px !important; color: rgb(255, 255, 255) !important; }';
-    doc.head. appendChild(styleEl);
-  }
-
-  // 중복 설정 UI 제거 (마지막 하나만 유지)
-  var allSettings = doc.querySelectorAll('#autocomplete_settings');
-  if (allSettings.length > 1) {
-    for (var i = 0; i < allSettings.length - 1; i++) {
-      allSettings[i].remove();
+    if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
+      var styleEl = document.createElement('style');
+      styleEl.id = 'cac-yt-settings-style';
+      styleEl.textContent = '#autocomplete_settings, #autocomplete_settings * { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif ! important; font-size: 14px !important; color: rgb(255, 255, 255) !important; }';
+      doc.head.appendChild(styleEl);
     }
-  }
-});
+  });
   ytStyleObserver.observe(window.top.document.body, { childList: true, subtree:  true });
 }
 
@@ -381,10 +371,10 @@ if (location.hostname.includes('youtube.com')) {
       }, true);
     }
 
-    window.top.document.addEventListener('keydown', (e) => {
+window.top.document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-    allSettings.forEach(el => el.classList.remove('opened'));
+    allSettings. forEach(el => el.classList.remove('opened'));
   }
 }, true);
   }, 5000);
