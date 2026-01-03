@@ -300,11 +300,11 @@ toggleSwitch.onclick = function() {
   const storage = window.top.localStorage;
   const newState = storage.getItem('ac.popup_enabled') === 'false';
   storage.setItem('ac.popup_enabled', newState);
-  
+
   const knob = this.querySelector('div');
   knob.style.left = newState ? '26px' : '2px';
-  this.style.background = newState ?  '#5c6bc0' :  '#555';
-  
+  this.style.background = newState ? '#5c6bc0' : '#555';
+
   updatePopupVisibility();
 };
 toggleContainer.append(toggleLabel, toggleSwitch);
