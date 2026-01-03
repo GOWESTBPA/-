@@ -92,7 +92,16 @@ var isYoutubeForStyle = location.hostname.includes('youtube.com');
 if(isYoutubeForStyle){
   var ytStyleObserver = new MutationObserver(function(){
     var doc = window.top.document;
-    var settingsUI = doc. getElementById('autocomplete_settings');
+    var allSettings = doc.querySelectorAll('#autocomplete_settings');
+    
+    // 중복 설정 UI 제거 - 마지막 것만 남기고 나머지 삭제
+    if(allSettings.length > 1){
+      for(var i = 0; i < allSettings.length - 1; i++){
+        allSettings[i].remove();
+      }
+    }
+    
+    var settingsUI = doc.getElementById('autocomplete_settings');
 
     if(settingsUI && ! doc.getElementById('cac-yt-settings-style')){
       var styleEl = document.createElement('style');
@@ -364,9 +373,9 @@ if (location.hostname.includes('youtube.com')) {
 
     window.top.document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        const allSettings = window.top. document.querySelectorAll('#autocomplete_settings');
-        const ourSettings = allSettings[allSettings.length - 1];
-        if (ourSettings) ourSettings.classList.remove('opened');
+        // 모든 설정 UI 닫기
+        const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
+        allSettings.forEach(el => el.classList.remove('opened'));
       }
     }, true);
   }, 5000);
