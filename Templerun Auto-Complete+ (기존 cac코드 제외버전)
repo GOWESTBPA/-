@@ -373,12 +373,12 @@ if (location.hostname.includes('youtube.com')) {
       }
     }
 
-window.top.document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
-    allSettings. forEach(el => el.classList.remove('opened'));
-  }
-}, true);
+    window.top.document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const allSettings = window.top.document.querySelectorAll('#autocomplete_settings');
+        allSettings.forEach(el => el.classList.remove('opened'));
+      }
+    }, true);
   }, 5000);
 }
   // ===== 2. CSS 스타일 =====
