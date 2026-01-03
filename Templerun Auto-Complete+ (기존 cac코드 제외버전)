@@ -94,7 +94,7 @@ if(isYoutubeForStyle){
     var doc = window.top.document;
     var allSettings = doc.querySelectorAll('#autocomplete_settings');
     
-    // 중복 설정 UI 제거 - 첫 번째 것만 남기고 나머지 삭제
+    // 중복 설정 UI 제거 - 마지막 것만 남기고 나머지 삭제
     if(allSettings.length > 1){
       for(var i = 0; i < allSettings.length - 1; i++){
         allSettings[i].remove();
