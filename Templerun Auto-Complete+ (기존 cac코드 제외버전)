@@ -37,7 +37,7 @@ function getPopupIframe() {
 }
 
 function updatePopupVisibility() {
-  console.log('[디버깅] updatePopupVisibility가 호출되었습니다.');
+  console.log('[디버깅] updatePopupVisibility 호출됨');
   
   if (isUpdating) return;
   isUpdating = true;
