@@ -363,12 +363,21 @@ if (location.href.includes('youtube.com/live_chat')) {
       popup.addEventListener('click', (e) => {
         const target = e.target.closest('.autocomplete_item');
         if (target && target.textContent.trim() === '설정') {
-          const settings = window.top.document.querySelector('#autocomplete_settings');
+          const settings = window. top.document.querySelector('#autocomplete_settings');
           if (settings) settings.classList.add('opened');
         }
       }, true);
     }
   }, 5000);
+    // ESC 키로 설정 UI 닫기
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const settings = window.top.document.querySelector('#autocomplete_settings');
+      if (settings && settings.classList.contains('opened')) {
+        settings. classList.remove('opened');
+      }
+    }
+  });
 }
   // ===== 2. CSS 스타일 =====
   GM_addStyle(`
