@@ -746,7 +746,9 @@ html #autocomplete_popup .autocomplete_item {
   // 초기 적용
   applyFontFix();
   addBackupButtonsToSettings();
-
+// ESC 키로 설정 UI 닫기
+const isYT = location.hostname.includes('youtube.com');
+const targetDoc = isYT ? window.top.document : document;
 function updateLeftPaneScrollbar(){
   var target=document.querySelector('.autocomplete_pane.left_pane');
   if(!target)return;
