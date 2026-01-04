@@ -37,13 +37,10 @@ function getPopupIframe() {
 }
 
 function updatePopupVisibility() {
-  console.log('[디버깅] updatePopupVisibility가 호출되었습니다.');
-  
   if (isUpdating) return;
   isUpdating = true;
 
   const isEnabled = storage.getItem('ac.popup_enabled') !== 'false';
-  console.log('[디버깅] 팝업 활성화 상태:', isEnabled);
 
   let popups;
   if (isYoutubePopup) {
@@ -59,14 +56,6 @@ function updatePopupVisibility() {
     popups.forEach(popup => {
       const items = popup.querySelectorAll('.autocomplete_item');
       items.forEach(item => {
-        console.log('[디버깅]: 아이템 텍스트:', item.textContent.trim());
-        
-        const style = window.getComputedStyle(item);
-        console.log('[디버깅]: 아이템 스타일:', {
-          display: style.display,
-          opacity: style.opacity,
-        });
-        
         if (item.textContent.trim() !== '설정') {
           item.style. setProperty('display', isEnabled ?  '' : 'none', 'important');
         }
@@ -1142,7 +1131,7 @@ const INPUT = isChzzk
   ? "div#input.yt-live-chat-text-input-field-renderer[contenteditable]"
   : "#write_area[contenteditable='true']";
 
-U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subscribe(v=>{n.style.left=`${v}px`}),yc.subscribe(v=>{n.style.bottom=`${48-v}px`}),op.subscribe(v=>{n.style.opacity=`${v}`}),e.appendChild(n);let s=b(n),o=b(null),l=b(""),t=b(0),i=b(0),u=b(null),r=b(null);U(INPUT,(p,f)=>{let v=p,B=()=>{console.log('[디버깅] 입력 이벤트 발생! 필드 값:', v.textContent);l.set(v.textContent??"");if (s) {console.log('[디버깅 - 팝업 내용]:', s.get().innerHTML);} else {console.log('[디버깅] 팝업 요소를 찾을 수 없습니다.');}};o.set(v),v.addEventListener("input",B);let{handleControlKey:T}=Ne({$popupElm:s,$inputElm:o,$text:l,$selection:t,$lastCompletionTime:i,$lastCompletion:u,$lastCompletionCategory:r},f);v.addEventListener("keydown",T),f(re(B))},e)});GM_addStyle(`
+U(WRAP,e=>{let n=document.createElement("div");n.id="autocomplete_popup",xc.subscribe(v=>{n.style.left=`${v}px`}),yc.subscribe(v=>{n.style.bottom=`${48-v}px`}),op.subscribe(v=>{n.style.opacity=`${v}`}),e.appendChild(n);let s=b(n),o=b(null),l=b(""),t=b(0),i=b(0),u=b(null),r=b(null);U(INPUT,(p,f)=>{let v=p,B=()=>{l.set(v.textContent??"")};o.set(v),v.addEventListener("input",B);let{handleControlKey:T}=Ne({$popupElm:s,$inputElm:o,$text:l,$selection:t,$lastCompletionTime:i,$lastCompletion:u,$lastCompletionCategory:r},f);v.addEventListener("keydown",T),f(re(B))},e)});GM_addStyle(`
 #autocomplete_settings {
 	display: none;
 	position: fixed;
